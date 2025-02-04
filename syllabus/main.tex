@@ -21,17 +21,12 @@
 
 \renewcommand{\thesection}{Module \Roman{section}:}
 
-% Make this take two inputs, the first is the date, the second is the title of the week
-% Make the date on the left, the title on the right
-
-\newcommand{\week}[2]{
-    \begin{minipage}[t]{0.5\textwidth}
-        \textbf{#1}
-    \end{minipage}
-    \begin{minipage}[t]{0.5\textwidth}
-        \textbf{#2}
-    \end{minipage}
+\newcommand{\week}[3]{
+    \begin{center}
+        \textbf{#1} \dotfill \textbf{#2:} #3
+    \end{center}
 }
+
 
 
 
@@ -93,7 +88,7 @@ TODO
 
 % \subsection*{\textbf{19-02-2025} Week 1: Working with data}
 
-\week{19-02-2025}{Week 1: Working with data}
+\week{19-02-2025}{Week 1}{Working with data}
 
 \begin{enumerate}
     \item Loading data from a file
