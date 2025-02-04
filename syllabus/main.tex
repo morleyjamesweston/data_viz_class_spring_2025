@@ -28,8 +28,14 @@
     \end{center}
 }
 
+\newcommand{\specialweek}[2]{
+    \begin{center}
+        \textbf{#1} \dotfill \textbf{#2}
+    \end{center}
+}
+
 \newcommand{\module}[2]{
-    \vspace{1em}
+    \vspace{2em}
     \large
     \textbf{#1:} \textit{#2}
     \normalsize
@@ -81,56 +87,98 @@ TODO
 \section*{Schedule}
 
 \module{Before we start}{Installing software}
-\begin{enumerate}
+\begin{itemize}
     \item Install R and RStudio
     \item Install the Tidyverse package
-    \item Creating our first data visualization
-\end{enumerate}
+    \item Making sure everything works
+\end{itemize}
 
 \module{Module 1}{Working with data}
 
-\week{19-02-2025}{Week 1}{Working with data}
-\begin{enumerate}
+\week{Week 1}{Intro to data wrangling}{19-02-2025}
+\begin{itemize}
     \item Loading data from a file
-    \item Filtering & Summarizing data
-\end{enumerate}
+    \item Filtering \& Summarizing data
+\end{itemize}
 
-\week{Week 2}{TK}{26-02-2025}
-\week{Week 3}{TK}{05-03-2025}
-\week{Week 4}{TK}{12-03-2025}
-\begin{enumerate}
-    \item Finding your own datasets
-    \item Data cleaning and wrangling
-\end{enumerate}
+\week{Week 2}{Data wrangling}{26-02-2025}
+\begin{itemize}
+    \item Shaping data
+    \item Joining data
+\end{itemize}
+
+\week{Week 3}{Data tips \& Tricks}{05-03-2025}
+\begin{itemize}
+    \item Dealing with missing data
+    \item Dates \& times
+    \item Regular expressions
+\end{itemize}
+
+\week{Week 4}{Finding your own datasets}{12-03-2025}
+\begin{itemize}
+    \item Where to find data sources
+    \item Data cleaning
+\end{itemize}
 
 \module{Module 2}{Data visualization}
 
-\week{Week 5}{TK}{19-03-2025}
-\week{Week 6}{TK}{26-03-2025}
-\week{Week 7}{TK}{02-04-2025}
-\week{Week 8}{TK}{09-04-2025}
-\week{Week 9}{Midterm Presentations}{16-04-2025}
+\week{Week 5}{Basic GGplot}{19-03-2025}
+\begin{enumerate}
+    \item Basic plots
+    \item Customizing plots
+    \item Saving plots
+\end{enumerate}
+
+\week{Week 6}{Intermediate GGplot}{26-03-2025}
+\begin{enumerate}
+    \item Themes \& colors
+    \item Faceting
+    \item Typography
+\end{enumerate}
+
+\week{Week 7}{Composing advanced plots}{02-04-2025}
+\begin{enumerate}
+    \item Beyond bars, lines, and points
+    \item Using the grammar of graphics
+\end{enumerate}
+
+\week{Week 8}{Aesthetics}{09-04-2025}
+\begin{enumerate}
+    \item Color theory
+    \item Accessibility
+    \item Publishing your work
+\end{enumerate}
+
+\specialweek{Midterm Presentations}{16-04-2025}
 \week{Easter break}{No class}{23-04-2025}
 
 \module{Module 3}{Advanced topics}
 
-\week{Week 10}{Maps \& geospatial data}{30-04-2025}
-\begin{enumerate}
+\week{Week 9}{Maps \& geospatial data}{30-04-2025}
+\begin{itemize}
     \item Using geospatial data
     \item Creating maps
-\end{enumerate}
+\end{itemize}
 
-\week{Week 11}{Interactivity \& the internet}{07-05-2025}
-\begin{enumerate}
+\week{Week 10}{Interactivity \& the internet}{07-05-2025}
+\begin{itemize}
     \item Creating interactive visualizations with Plotly
-\end{enumerate}
+    \item Publishing notebooks, websites, 
+\end{itemize}
 
-\week{Week 12}{TK}{14-05-2025}
-\week{Week 13}{TK}{21-05-2025}
+\week{Week 11}{Learning on your own}{14-05-2025}
+\begin{itemize}
+    \item 
+\end{itemize}
 
-\week{Week 14}{Final presentations}{28-05-2025}
+\week{Week 12}{Tables \& statistics}{21-05-2025}
+\begin{itemize}
+    \item Exporting and submitting statistical tables
+    \item Plotting statistical results
+    \item Visualizations for academia
+\end{itemize}
 
+\specialweek{Final presentations}{28-05-2025}
 
-\section{Advanced topics}
 
 \end{document}
