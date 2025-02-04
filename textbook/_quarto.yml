@@ -1,0 +1,27 @@
+project:
+  type: book
+
+book:
+  title: "Data Visualization for Communication Science"
+  author: "Morley J Weston"
+  date: "2/4/2025"
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme:
+      dark: darkly
+      light: sandstone
+    mainfont: "Source Sans Pro"
+    monofont: "Iosevka"
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+
