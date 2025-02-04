@@ -22,15 +22,13 @@
 \renewcommand{\thesection}{Module \Roman{section}:}
 
 % Make this take two inputs, the first is the date, the second is the title of the week
-% Make the date on the left, the title on the right
+% Make the date aligned to the left, the title to the right, with a dotted line between them
 
 \newcommand{\week}[2]{
-    \begin{minipage}[t]{0.5\textwidth}
-        \textbf{#1}
-    \end{minipage}
-    \begin{minipage}[t]{0.5\textwidth}
-        \textbf{#2}
-    \end{minipage}
+    \begin{center}
+        \textbf{#1} \hfill \textbf{#2}
+    \end{center}
+    \hrule
 }
 
 
