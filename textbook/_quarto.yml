@@ -22,6 +22,13 @@ format:
     monofont: "Iosevka"
   pdf:
     documentclass: scrreprt
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    colorlinks: true
+    papersize: a4
+    mainfont: "Source Sans Pro"
+    monofont: "Iosevka"
 
 editor: visual
 

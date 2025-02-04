@@ -4,4 +4,6 @@
 .Ruserdata
 
 /.quarto/
-_book/
+_book/site_libs/
+
+*.tex
