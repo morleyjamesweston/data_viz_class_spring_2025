@@ -9,6 +9,7 @@
  margin=3.0cm
  }
 
+
 \usepackage[T1]{fontenc}
 \usepackage[default,regular,black]{sourceserifpro}
 \usepackage[font=small,labelfont=bf]{caption}
@@ -21,16 +22,11 @@
 
 \renewcommand{\thesection}{Module \Roman{section}:}
 
-% Make this take two inputs, the first is the date, the second is the title of the week
-% Make the date aligned to the left, the title to the right, with a dotted line between them
-
-\newcommand{\week}[2]{
+\newcommand{\week}[3]{
     \begin{center}
-        \textbf{#1} \hfill \textbf{#2}
+        \textbf{#1} \dotfill \textbf{#2:} #3
     \end{center}
-    \hrule
 }
-
 
 
 % \renewcommand{\thesection}
@@ -91,7 +87,7 @@ TODO
 
 % \subsection*{\textbf{19-02-2025} Week 1: Working with data}
 
-\week{19-02-2025}{Week 1: Working with data}
+\week{19-02-2025}{Week 1}{Working with data}
 
 \begin{enumerate}
     \item Loading data from a file
