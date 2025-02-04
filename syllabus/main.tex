@@ -17,7 +17,25 @@
 \usepackage{setspace}
 
 \usepackage{titlesec}
+
+
 \renewcommand{\thesection}{Module \Roman{section}:}
+
+% Make this take two inputs, the first is the date, the second is the title of the week
+% Make the date on the left, the title on the right
+
+\newcommand{\week}[2]{
+    \begin{minipage}[t]{0.5\textwidth}
+        \textbf{#1}
+    \end{minipage}
+    \begin{minipage}[t]{0.5\textwidth}
+        \textbf{#2}
+    \end{minipage}
+}
+
+
+
+% \renewcommand{\thesection}
 
 % \onehalfspacing
 
@@ -73,13 +91,37 @@ TODO
 
 \section{Working with data}
 
-\subsection*{19-02-2025 \textbf{Week 1}}
+% \subsection*{\textbf{19-02-2025} Week 1: Working with data}
+
+\week{19-02-2025}{Week 1: Working with data}
 
 \begin{enumerate}
-    \item Loading data
-    \item Cleaning data
+    \item Loading data from a file
+    \item Filtering data
     \item Summarizing data
 \end{enumerate}
+
+
+
+% \subsection*{26-02-2025 \textbf{Week 2}}
+
+
+\subsection*{05-03-2025 \textbf{Week 3}}
+
+\subsection*{12-03-2025 \textbf{Week 4}}
+\subsection*{19-03-2025 \textbf{Week 5}}
+\subsection*{26-03-2025 \textbf{Week 6}}
+\subsection*{02-04-2025 \textbf{Week 7}}
+\subsection*{09-04-2025 \textbf{Week 8}}
+\subsection*{16-04-2025 \textbf{Week 9}}
+\subsection*{23-04-2025 \textbf{Week 10}}
+Easter Break
+
+\subsection*{30-04-2025 \textbf{Week 11}}
+\subsection*{07-05-2025 \textbf{Week 12}}
+\subsection*{14-05-2025 \textbf{Week 13}}
+\subsection*{21-05-2025 \textbf{Week 14}}
+Final Presentations
 
 \section{Plotting}
 
