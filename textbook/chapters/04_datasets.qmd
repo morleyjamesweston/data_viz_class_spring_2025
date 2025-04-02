@@ -1,0 +1,302 @@
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Finding your own data sets
+
+So far, we've been relying on some pretty simple example data, mainly from the Swiss government. This week, we're going to look at how you can find your own data sets, so you can work on projects that are interesting to you.
+
+### Using national data portals
+
+Just about every country has some sort of national data portal or statistical bureau that collects and publishes data. These are great places to find data, because the data is usually well-organized and reliable. A couple examples are:
+
+-   Canada: https://open.canada.ca/en
+-   Germany: https://www-genesis.destatis.de/genesis/online
+-   Taiwan: https://data.gov.tw/en
+
+## Classwork: Finding demographic data
+
+1.  Think of a place that you're interested in (besides Switzerland, because we've done a lot of this already)
+
+2.  Find the website of the statistical bureau or data portal of that country.
+
+3.  Find a dataset that contains the following information:
+
+    -   Population of each state / province / canton / region
+    -   Something related to the economy (GDP, unemployment, etc.)
+    -   Something related to health (life expectancy, infant mortality, etc.)
+    -   Something related to education (literacy rate, school enrollment, etc.)
+    -   Something related to the environment (CO2 emissions, forest cover, etc.)
+
+4.  Download the data and load it into R.
+
+### Effectively searching for data
+
+When you're looking for data, it's important to use the right search terms. Here are a few tips:
+
+-   Use the `filetype:` operator to search for specific file types. For example, if you're looking for CSV files using Google, you can search for **filetype:csv canadian housing**, and it will only return CSV files.
+
+-   Use the `site:` operator to search within a specific website. For example, if you're looking for data on the Swiss government's website, you can search for **site:admin.ch population**.
+
+-   Use the `intitle:` operator to search for specific words in the title of a page. For example, if you're looking for data on the Swiss government's website, you can search for **intitle:migration site:admin.ch**.
+
+## R Packages that supply data
+
+There are a few R packages that can help you get data from various sources. Here are a few of the more useful ones:
+
+### Eurostat
+
+Eurostat is the statistical office of the European Union. They collect data on a wide range of topics, including agriculture, trade, and the environment. You can access their data using the `eurostat` package, which you might have to install seperately.
+
+```{r eval =FALSE}
+install.packages("eurostat")
+```
+
+```{r}
+library(eurostat)
+```
+
+This package has a `search_eurostat` function that you can use to search for data sets. For example, if you're interested in animal statistics, you can search for "Animal". This will return a data frame with the results of the search, including codes for the data sets.
+
+```{r}
+animal_stats <- search_eurostat("Animal")
+animal_stats
+```
+
+However, I've always found this to be a bit janky and not very useful. You might have better luck searching the website. 
+
+<https://ec.europa.eu/eurostat>
+
+In either case, you just want to find the code for the data set you're interested in. Once you have that, you can use the `get_eurostat` function to download the data.
+
+```{r eval=FALSE}
+animal_data <- get_eurostat("agr_r_animal")
+animal_data
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+read_csv("input_data/animal_data.csv") |> head(30)
+```
+
+Eurostat often uses a geographical division called the NUTS (Nomenclature of Territorial Units for Statistics) system. This system divides countries into regions, which are then divided into smaller regions, and so on. The idea is to have a consistent way of dividing up countries into similar-sized areas for statistical purposes. Often, this doesn't correspond to any administrative divisions, but it's useful for comparing regions across countries.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(sf)
+
+euronuts <- st_read("input_data/NUTS_RG_20M_2024_4326//NUTS_RG_20M_2024_4326.shp", quiet = TRUE)
+
+euronuts |> 
+  mutate(NUTS_LEVEL = paste0("NUTS", LEVL_CODE)) |>
+  st_crop(xmin = -10, xmax = 50, ymin = 30, ymax = 70) |>
+  ggplot() +
+  geom_sf(linewidth=0.5, fill="#eeeeee") +
+  coord_sf(crs = "+proj=laea") +
+  facet_wrap(~NUTS_LEVEL) +
+  theme_void() +
+  labs(title = "Nomenclature of Territorial Units for Statistics (NUTS)") +
+  theme(legend.position = "none")
+```
+
+### World Bank Statistics
+
+Next, we have the `wbstats` package, which allows you to access data from the World Bank. This can give you a lot of economic data between countries.
+
+```{r eval=FALSE}
+install.packages("wbstats")
+```
+
+```{r}
+library(wbstats)
+```
+
+
+Like Eurostat, the `wb_search` function allows you to search for data sets
+
+```{r}
+wb_search("electricity")
+```
+
+And like Eurostat, you can use the `wb_data` function to download the data.
+
+```{r eval=FALSE}
+wb_data("4.1.1_TOTAL.ELECTRICITY.OUTPUT")
+```
+
+<!-- wb_data("4.1.1_TOTAL.ELECTRICITY.OUTPUT") |> write.csv("input_data/electricity_output.csv") -->
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+read_csv("input_data/electricity_output.csv") |> head(30)
+```
+
+### BFS data
+
+If you're going to be working frequently with Swiss data, you can use an R package built by the Swiss Federal Statistical Office (BFS) to access their data.
+
+```{r eval=FALSE}
+install.packages("BFS")
+```
+
+```{r}
+library(BFS)
+```
+
+This works essentially the same as the last two; you can search for data sets using the `bfs_get_catalog_data` function, and download data using the `bfs_get_data` function.
+
+```{r eval=FALSE}
+bfs_get_catalog_data(language = "en", extended_search = "university")
+```
+
+```{r echo=FALSE}
+bfs_get_catalog_data(language = "en", extended_search = "university") |> 
+  mutate(title = paste0(str_sub(title, 1, 20), "...")) |> 
+  select(title, number_bfs, everything())
+```
+
+```{r eval=FALSE}
+bfs_get_data(number_bfs = "px-x-1502040100_132", language = "en") |> write_csv("input_data/university_enrollment.csv")
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+read_csv("input_data/university_enrollment.csv") |> head(30)
+```
+
+## Web scraping
+
+Our final method of acquiring data is the real wild west: web scraping.
+
+Extracting usable data from websites, is a really, really big topic, and one that we can't really cover in depth in one lesson. However, we can do some basic web scraping that will get you pretty far. In this little bottled example, we'll scrape a table from Wikipedia, in this case a list of US cities by area.
+
+To do this, we'll use the `rvest` package, which you might have to install.
+
+```{r eval=FALSE}
+install.packages("rvest")
+```
+
+```{r}
+library(rvest)
+```
+
+This gives us quite a few functions to download and parse HTML. We'll start by downloading the HTML of the page using the `read_html` function.
+
+```{r}
+html <- read_html("https://en.wikipedia.org/wiki/List_of_United_States_cities_by_area")
+
+html
+```
+
+This gives us the HTML of the page, just the code that makes up the website.
+
+HTML is a markup language, which means it's a way of describing the structure of a document. It's made up of tags, which are enclosed in angle brackets. For example, `<h1>` is a tag that indicates a heading, `<h2>` is a subheading, and so on.
+
+Here's a simple example:
+
+``` html
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+    <!-- The h1 tag is a heading-1, which is usually the title of the page -->
+    <h1>My website about frogs</h1>
+  
+    <!-- The h2 tag is a heading-2, which is a subheading, usually denoting a section -->
+    <h2>What is a frog?</h2>
+    
+    <!-- The p tag is a paragraph, which is used for text -->
+    <p>A frog is a small amphibian that lives in water and on land.</p>
+  
+    <!-- You can have multiple tags of any type -->
+    <h2>Where do frogs live?</h2>
+    <p>Frogs live in ponds, rivers, and lakes.</p>
+  
+    <h2>What do frogs eat?</h2>
+    <p>Frogs eat insects and other small animals.</p>
+  </body>
+</html>
+```
+
+When opened in a web browser, this would look like this:
+
+![We are now web designers.](images/datasets/frog_website.png)
+
+We can now use the `html_nodes` function to extract specific parts of the page. For example, to extract all the H1 tags, we can use the following code:
+
+```{r}
+html |> 
+  html_nodes("h1")
+```
+
+For H2 tags, we can use this code. To get all the text inside the tags, we can use the `html_text` function.
+
+Note that there are multiple H2 tags on the page, so we get a list of them.
+
+```{r}
+html |> 
+  html_nodes("h2") |> 
+  html_text()
+```
+
+We can also extract tables from the page. To do this, we can use the `html_nodes` function with the `table` tag.
+
+```{r}
+tables_on_page <- html |> 
+  html_nodes("table")
+
+tables_on_page
+```
+
+Because there are multiple tables on the page, we get a list of them. We can extract the second table, which is the one we're interested in. You can go back to the website and count down to whatever table you want to extract, or just do it with trial-and-error.
+
+![The table we want is the second one on the page.](images/datasets/wiki_tables.png)
+
+The structure of this data is a little odd, because it's a list of lists. We extract the second element of the list, which is the table we want.
+
+```{r}
+cities_table <- tables_on_page[[2]]
+cities_table
+```
+
+Finally, we can use the `html_table` function to convert this table into a data frame.
+
+```{r}
+cities_df <- cities_table |> 
+  html_table()
+
+cities_df
+```
+
+That's it! You've now scraped a table from Wikipedia. This is a very basic example, but you could use this basic concept to scrape data from any website that has tables on it.
+
+### Classwork: Scraping a table from the BBC
+
+Here's a link to the BBC's election results page for the 2024 UK general election:
+
+<https://www.bbc.com/news/election/2024/uk/results>
+
+This page has a table with the results of the election. Your task is to scrape this table and load it into R as a data frame.
+
+Your result should look something like this:
+
+```{r echo=FALSE}
+html <- read_html("https://www.bbc.com/news/election/2024/uk/results")
+
+tables <- html |> 
+  html_nodes("table")
+
+final_table <- tables[[1]] |> 
+  html_table()
+
+final_table
+```
+
+### Some web scraping tips
+
+-   **Be polite**: Don't scrape websites too often, and don't scrape them too fast. This can overload the server and get you banned.
+-   **Save the data**: Once you've scraped the data, save it to a file. This way, you don't have to scrape the website again. Websites can change, and you might not get the same data if you scrape it again.
+-   **Check the terms of service**: Some websites don't allow scraping. If you're doing something that isn't allowed, be extra careful. If you're selling the data, it could get you in some real legal trouble.
+
+### Next steps with web scraping
+
+If you'd like to keep using R, the book "R for Data Science" has a great chapter on web scraping. You can find it here: <https://r4ds.hadley.nz/webscraping.html>
+
+However, R is pretty limited when it comes to web scraping. If you're interested in doing more complicated things, I'd recommend learning Python or Go. 

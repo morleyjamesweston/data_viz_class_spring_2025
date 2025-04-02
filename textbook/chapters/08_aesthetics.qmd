@@ -1,0 +1,278 @@
+# Aesthetics
+
+```{r}
+library(tidyverse)
+```
+
+## Classwork: Color blindness and accessibility
+
+1.  Everyone should take out the plots they did for their midterms, and paste one of them into this website: https://pilestone.com/pages/color-blindness-simulator-1
+
+2.  This will show you what your plot looks like to someone with color blindness. Did the colors you chose still work? If not, what could you do to make them more accessible?
+
+## Printability
+
+Especially when you’re making plots for an academic article, you need to make sure that they look good in black and white, because many people still print things off to read them on their B&W office printer, and your plot should still look OK. You can use the color blindness simulator to see how your plot looks in black and white under the monochromacy setting, or actually print it off before publishing.
+
+Be careful with gradients, as they can do weird things in black and white. For example, this chart looks pretty festive and easy to interpret in color, but in black and white, it’s a mess.
+
+## Computer colors
+
+But what do these codes mean? Let’s go on a little deep dive into how colors are represented on computers.
+
+### Old-school graphics
+
+![An apple 2e, from computinghistory.org.uk](images/aesthetics/apple_2e.jpg)
+
+Everything on a computer is stored as groups of 0s and 1s. This is called the binary number system. Back in the olden days, computers would display colors as only black and white, with a 0 being black and a 1 being white (or green, or whatever color the screen was).
+
+```{r}
+tibble(
+  g = c(0, 0, 0, 0, 0, 0, 0),
+  f = c(0, 0, 1, 0, 1, 0, 0),
+  e = c(0, 0, 0, 0, 0, 0, 0),
+  d = c(0, 0, 0, 1, 0, 0, 0),
+  c = c(0, 1, 0, 0, 0, 1, 0),
+  b = c(0, 0, 1, 1, 1, 0, 0),
+  a = c(0, 0, 0, 0, 0, 0, 0)
+) |> 
+  mutate(row = row_number()) |> 
+  pivot_longer(cols = a:g, names_to = "column", values_to = "value")  |> 
+  ggplot() +
+  geom_tile(aes(x = row, y = column, fill = value)) +
+  scale_fill_gradient(low = "#112222", high = "#22dd22") +
+  theme_void() +
+  theme(legend.position = "none")
+```
+
+This was fine in the 1980s, but as computers got more powerful, people wanted to display more colors. To do this, we need to understand how computers store numbers.
+
+When we write a number, we can go from 0 to 9 before we need to add another digit. This is called base 10, because we have 10 digits to work with. Computers, however, only have two digits: 0 and 1. This is called base 2, or binary. When numbers are stored in a computer, you need to add another digit every time you get to 2.
+
+![](images/aesthetics/binary.png)
+
+### Classwork: Counting in binary
+
+Without peeking, on a piece of paper, write the numbers 1 to 20 in binary.
+
+1.  How many bits (a 0 or a 1) do you need to write the number 20 in binary?
+2.  What is 1111 in base 10?
+3.  How many different numbers can you write with 4 bits?
+
+### Four-bit color
+
+The next innovation was to code each of these numbers to a color. This is called a color palette. Here’s a four-bit color palette:
+
+![](images/aesthetics/4_bit_color.png)
+
+Note that with 4 bits, we get 16 colors. This is because 2\^4 = 16. To make it easier to remember, we can write these numbers in hexadecimal, which is base 16. This is why the colors are written as #0, #1, #2, …, #9, #A, #B, #C, #D, #E, #F. Hexidecimal is used all the time in computer programming because it’s a nice way to write numbers in base 16.
+
+![](images/aesthetics/hexcode.png)
+
+But what if you want more than 16 numbers? You could use 8 bits, which gives you 256 colors. This is called the 8-bit color model. This is often represented with two hexidecimal digits, so you can have colors like #00, #01, …, #FF.
+
+![](images/aesthetics/hexcode_2.png)
+
+### Color channels
+
+Color palettes were fine for the early 90s, but there were two problems:
+
+1.  The colors were different on every computer.
+2.  There were only a limited number of colors.
+
+We solved this by using three color channels: red, green, and blue.This is called the RGB color model. This works well, because if you look super closely at most compuuter screens, you’ll see that it’s made up of tiny red, green, and blue dots right next to each other, and your brain mixes them together to make all the colors you see.
+
+![Color channels, from https://en.wikipedia.org/wiki/RGB_color_model#/media/File:RGB_pixels.jpg](images/aesthetics/colorchannels.jpg)
+
+### Web colors
+
+The current most common color model is the web color model, which uses 8 bits for each color channel; two hexidecimal digits for each color. For this, there are two digits for red, two for green, and two for blue. This means that there are 256 different values for each color channel, which gives us 256 \* 256 \* 256 = 16,777,216 different colors.
+
+In this system, the color #000000 is black, #FFFFFF is white, #FF0000 is red, #00FF00 is green, and #0000FF is blue. R + G + B.
+
+Here is a color wheel of all the colors in the web color model:
+
+```{r}
+tibble(
+  hue = seq(0,1, length.out = 13),
+  color = hsv(hue, 1, 1)
+) |> 
+  mutate(color_string = color |> as.character() |> str_to_lower()) |> 
+  head(-1) |>
+  ggplot(aes(x = hue, y = 1)) +
+  geom_tile(aes(fill = color)) +
+  geom_text(aes(label = color_string), color = "black") +
+  scale_fill_identity() +
+  lims(y = c(-0.5, 1.5)) +
+  theme_void() +
+  coord_polar()
+```
+
+You’ll notice that this color wheel is a little different than the one you learned in school; the complement of blue is yellow, not orange. This is because this is a color wheel of light, not pigment. The primary colors of light are red, green, and blue, not red, yellow, and blue.
+
+![](images/aesthetics/rgb_color_combos.png)
+
+## Classwork: Color matching
+
+Let’s get some practice with color matching. I’ve given you an array of tiles, each with a different color. Please type the hex code that matches each color. You don’t have to be exact.
+
+Do as many as you can in 15 minutes.
+
+
+```{r echo = FALSE}
+ggplot() +
+  geom_tile(aes(x = 1, y = 0), fill = "#ff0000") + 
+  geom_tile(aes(x = 2, y = 0), fill = "#00ff00") +
+  geom_tile(aes(x = 3, y = 0), fill = "#0000ff") +
+  geom_tile(aes(x = 4, y = 0), fill = "#ffff00") +
+  geom_tile(aes(x = 5, y = 0), fill = "#ff00ff") +
+  geom_tile(aes(x = 6, y = 0), fill = "#00ffff") +
+  geom_tile(aes(x = 7, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 8, y = 0), fill = "#ffffff") +
+  geom_tile(aes(x = 1, y = 1), fill = "#222222") +
+  geom_tile(aes(x = 2, y = 1), fill = "#666666") +
+  geom_tile(aes(x = 3, y = 1), fill = "#aaaaaa") +
+  geom_tile(aes(x = 4, y = 1), fill = "#eeeeee") +
+  geom_tile(aes(x = 5, y = 1), fill = "#ffee66") +
+  geom_tile(aes(x = 6, y = 1), fill = "#ffbb22") +
+  geom_tile(aes(x = 7, y = 1), fill = "#ee5500") +
+  geom_tile(aes(x = 8, y = 1), fill = "#663311") +
+  geom_tile(aes(x = 1, y = 2), fill = "#000033") +
+  geom_tile(aes(x = 2, y = 2), fill = "#2244aa") +
+  geom_tile(aes(x = 3, y = 2), fill = "#6699ff") +
+  geom_tile(aes(x = 4, y = 2), fill = "#ccffff") +
+  geom_tile(aes(x = 5, y = 2), fill = "#ffccee") +
+  geom_tile(aes(x = 6, y = 2), fill = "#440044") +
+  geom_tile(aes(x = 7, y = 2), fill = "#bada55") +
+  geom_tile(aes(x = 8, y = 2), fill = "#666600") +
+  theme_void() +
+  lims(y=c(2.5, -0.5))
+```
+
+
+```{r}
+ggplot() +
+  geom_tile(aes(x = 1, y = 0), fill = "#ff0000") + 
+  geom_tile(aes(x = 2, y = 0), fill = "#00ff00") +
+  geom_tile(aes(x = 3, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 4, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 5, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 6, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 7, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 8, y = 0), fill = "#000000") +
+  geom_tile(aes(x = 1, y = 1), fill = "#000000") + # Second row starts here
+  geom_tile(aes(x = 2, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 3, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 4, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 5, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 6, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 7, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 8, y = 1), fill = "#000000") +
+  geom_tile(aes(x = 1, y = 2), fill = "#000000") + # Third row starts here
+  geom_tile(aes(x = 2, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 3, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 4, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 5, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 6, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 7, y = 2), fill = "#000000") +
+  geom_tile(aes(x = 8, y = 2), fill = "#000000") +
+  theme_void() +
+  lims(y=c(2.5, -0.5))
+```
+
+## Homework
+
+### Homework 1: 3 categorical color palettes
+
+For your first assignment, you'll make three categorical color palettes: One for 3 colors, one for 5 colors, and one for 7 colors. You can use any colors you like, but make sure they are distinct and easy to tell apart. Check that they are accessible to colorblind people, and could be printed out and read without too much trouble.
+
+You can use the templates below to get started.
+
+```{r}
+tibble(categories = 1:3) |>
+  mutate(categories = as.character(categories)) |>
+  mutate(categories = paste("Category", categories)) |> 
+  ggplot() +
+  geom_tile(aes(x = categories, y = 1, fill = categories)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  labs(fill = "My Categorical Color Palette") +
+  guides(fill = guide_legend(title.position="top")) +
+  scale_fill_manual(
+    values = c(
+      "#ff0000",
+      "#ffff00",
+      "#ff00ff")
+    ) # Change this!
+```
+
+```{r}
+tibble(categories = 1:5) |>
+  mutate(categories = as.character(categories)) |>
+  mutate(categories = paste("Category", categories)) |> 
+  ggplot() +
+  geom_tile(aes(x = categories, y = 1, fill = categories)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  labs(fill = "My Categorical Color Palette") +
+    guides(fill = guide_legend(title.position="top")) +
+  scale_fill_manual(
+    values = c(
+      "#ff0000",
+      "#00ff00", 
+      "#0000ff",
+      "#ffff00",
+      "#ff00ff")
+    ) # Change this!
+```
+
+```{r}
+tibble(categories = 1:7) |>
+  mutate(categories = as.character(categories)) |>
+  mutate(categories = paste("Category", categories)) |> 
+  ggplot() +
+  geom_tile(aes(x = categories, y = 1, fill = categories)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  labs(fill = "My Categorical Color Palette") +
+    guides(fill = guide_legend(title.position="top")) +
+  scale_fill_manual(
+    values = c(
+      "#ff0000",
+      "#00ff00", 
+      "#0000ff",
+      "#ffff00",
+      "#ff00ff",
+      "#00ffff",
+      "#000000"
+      )
+    ) # Change this!
+```
+
+### Homework 2: 3 continuous color palettes.
+
+The other type of color palette is a continuous color palette, where the color changes gradually with the value of the variable.
+
+You can test this out by making a gradient with the code below. Here’s a simple example of a gradient with some nice blues, using the `scale_fill_gradientn()` function.
+
+Make 3 gradients of your own, so that you can use them in future plots whenever you wish.
+
+```{r}
+tibble(
+  grad = 0:20 / 20,
+) |> 
+  ggplot() +
+  geom_tile(aes(x = grad, y = 1, fill = grad)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  labs(fill = "My categorical color palette") +
+    guides(fill = guide_colorbar(title.position="top")) +
+  scale_fill_gradientn(colors = c(
+    "#222255",
+    "#227788",
+    "#88bbff")
+  ) # Change this!
+```
+
+Please email me the code you used to make your plots in a document named week_8_homework_(your_name).R by next Tuesday.
+

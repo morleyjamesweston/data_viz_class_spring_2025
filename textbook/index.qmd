@@ -1,9 +1,84 @@
 # Preface {.unnumbered}
 
+This is the class textbook for the course "Data Analysis and Visualization for Communication Science" at the University of Zurich.
+
+As I am adapting this course to work online, I will be updating the book as I go along, so expect changes and updatesIt is written in Markdown and compiled using the Quarto toolchainThe source code is available on GitHub at <https://github.com/morleyjamesweston/data_viz_class_spring_2025)>.
+
+## Contents{.unnumbered}
+
+### Module 1: Working with data{.unnumbered}
+
+#### Week 1: Tidyverse 1: Data wrangling *(19-02-2025)*
+- Basic R programming
+- Filtering & Summarizing data
+
+#### Week 2: Tidyverse 2: Data transformation *(26-02-2025)*
+- Importing data
+- Shaping data
+- Joining data
+
+#### Week 3: Tidyverse 3: Data tips & Tricks *(05-03-2025)*
+- Data cleaning practice
+- Dealing with missing data
+- Dates & times
+
+#### Week 4: Finding your own datasets *(12-03-2025)*
+- Where to find data sources
+- Data cleaning
+
+### Module 2: Data visualization{.unnumbered}
+
+#### Week 5: GGplot 1: Basic charts and graphs *(19-03-2025)*
+- Basic plots
+- Customizing plots
+- Saving plots
+
+#### Week 6: GGplot 2: Making it look good *(26-03-2025)*
+- Themes & colors
+- Fonts & labels
+- Faceting
+
+#### Week 7: GGplot 3: advanced charts and graphs *(02-04-2025)*
+- Beyond bars, lines, and points
+- Using the grammar of graphics
+
+#### Week 8: Aesthetics *(09-04-2025)*
+- Color theory
+- Accessibility
+- Web colors
+- Publishing your work
+
+#### Midterm Presentations *(16-04-2025)*
+
+#### Easter break: No class *(23-04-2025)*
+
+### Module 3: Advanced topics{.unnumbered}
+
+#### Week 9: Maps & geospatial data *(30-04-2025)*
+- Using geospatial data
+- Creating maps
+
+#### Week 10: Interactivity & the internet *(07-05-2025)*
+- Creating interactive visualizations with Plotly
+- Publishing notebooks and websites
+
+#### Week 11: Learning on your own *(14-05-2025)*
+- Finding libraries
+- Reading documentation
+- Beyond R and GGplot
+- Next steps
+
+#### Week 12: Tables & statistics *(21-05-2025)*
+
+- Exporting and submitting statistical tables
+- Plotting statistical results
+- Visualizations for academia
+
+#### Final presentations *(28-05-2025)*
+
+___
+
 This is a Quarto book.
 
 To learn more about Quarto books visit <https://quarto.org/docs/books>.
 
-```{r}
-1 + 1
-```

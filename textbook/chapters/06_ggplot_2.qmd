@@ -1,0 +1,558 @@
+# GGplot 2: Making it look good
+
+## Something new: R Notebooks and Quarto
+
+```{r message=FALSE}
+library(readxl)
+library(tidyverse)
+```
+
+We've been writing R scripts up until this point, but this week I want to get you started on a better way.
+
+When you open Rstudio, you'll notice that besides an R Script, you have a bunch of other options.
+
+![Quarto, R Notebooks, and R Markdown all do basically the same thing, but for this class, we'll use Quarto.](images/ggplot_2/doc_types.png)
+
+Most of these are other options are different ways to make notebooks with R code; ways to mix your code and text into a single document.
+
+These are useful for sharing your work with others, keeping a record of your work, or publishing your work in different types of document. This textbook your reading right now is actually a collection of notebooks; I wrote the text in Rstudio, and then ran the code in the same document.
+
+The newest of these options is Quarto, which is a polished way to make documents that mix code and text. To create a Quarto document, you can select "Quarto Document" from the "New File" menu in Rstudio.
+
+![Pretty smooth, huh?](images/ggplot_2/quarto_intro.png)
+
+Thinking back, we've learned a couple of keyboard shortcuts. We have:
+
+-   `Cmd-shift-M` to make a `|>` pipe,
+-   `Cmd-Enter` to run a block of code
+
+Now, we have a third option: `Cmd-shift-I` to insert a new code block. Everything outside these code blocks is text, and everything inside is where you put your R code. Lets try it out by deleting the example code blocks, and adding a new one at the top of your document with `Cmd-shift-I`.
+
+## Making a plot
+
+Inside the code block, let's start by loading the Tidyverse, then in a second code block, let's load some data about the [Bevölkerung nach Religion, Herkunft und Statistischer Zone.](https://opendata.swiss/en/dataset/bevolkerung-nach-religion-herkunft-und-statistischer-zone-seit-19931) Find the URL to the data, and load it into your document directly using `read_csv()`.
+
+![](images/ggplot_2/quarto_blocks.png)
+
+Usually when we're programming, we load all of our libraries at the top of the document. This is because it's easier to keep track of what libraries we're using, and of someone else runs our code, they'll know what libraries they might need to install right off the bat. Let's keep to this convention and load the Tidyverse at the top of the document.
+
+We then can use `read_csv()`, and enter a URL to load some data into our document.
+
+After you've done this, we can run an entire block of code by clicking the green play button in the top right of the code block, or by pressing `Cmd-shift-Enter`.You also have a handy little option to "Run all chunks above", also on the top right of the code block. This will run all the code blocks above the one you're currently in.
+
+```{r}
+#| eval=FALSE
+religion <- read_csv("https://data.stadt-zuerich.ch/dataset/bev_bestand_jahr_statzone_herkunft_konfession_od3161/download/BEV316OD3161.csv")
+```
+
+```{r}
+#| echo=FALSE, message=FALSE
+
+religion <- read_csv("input_data/bev316od3161.csv")
+```
+
+Let's look at the data, and figure out what each of the columns mean:
+
+```{r}
+religion |> glimpse()
+```
+
+Some of the ones that we want to look at are:
+
+-   `StichtagDatJahr`: year
+-   `Kon2AggLang_noDM`: religion
+-   `HerkunftLang`: Swiss or foreign
+-   `AnzBestWir`: number of people
+
+Let's see how many people are in each listed religion in 2023:
+
+```{r}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>  # We want to group the data by religion and year
+  summarise(total_people = sum(AnzBestWir)) # We want to sum the number of people in each religion and year
+```
+
+## Review: Plotting some data
+
+We can plot this pretty easily in GGplot, using a `geom_col()` to make a bar graph. Do this in a new code block, and the resulting plot should be mixed in with your code.
+
+```{r message=FALSE}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  ggplot() +
+  geom_col(aes(x = StichtagDatJahr, y = total_people, fill = Kon2AggLang_noDM))
+```
+
+`geom_col()` takes a couple of useful arguments, like `position`, which can be set to “dodge” to make the bars side by side, or “fill” to make the bars fill the space.
+
+```{r}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  ggplot() +
+  geom_col(aes(x = StichtagDatJahr, y = total_people, fill = Kon2AggLang_noDM), position = "dodge")
+```
+
+Here’s the same plot, but with position = "fill" instead of “dodge”:
+
+```{r}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  ggplot() +
+  geom_col(aes(x = StichtagDatJahr, y = total_people, fill = Kon2AggLang_noDM), position = "fill")
+```
+
+Here’s an example of a line graph, showing the number of people in each religion over time.
+
+```{r message=FALSE}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  ggplot() +
+  geom_line(aes(x = StichtagDatJahr, y = total_people, color = Kon2AggLang_noDM))
+```
+
+Finally, we should always remember to set limits and add titles to our graphs. This can be done using the `lims()` and `labs()` functions.
+
+```{r message=FALSE}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  ggplot() +
+  geom_line(aes(x = StichtagDatJahr, y = total_people, color = Kon2AggLang_noDM)) +
+  labs(
+    title = "Number of people in each religion in Zurich",
+    x = "Year",
+    y = "Number of people",
+    color = "Religion"
+    ) +
+  lims(y=c(0, 300000))
+```
+
+## Changing row values
+
+Often, we have to work with data sets that might not be in the right language, have weird abbreviations or capitalization, or have other issues. We can use the `case_match()` function to change these values to something more readable.
+
+`case_match()` takes a column, and a series of values to match, and then a series of values to replace them with. This is helpful for recoding values in a column, and is almost always used inside a `mutate()` function. It has a weird syntax, like so:
+
+```{r, eval=FALSE}
+case_match(
+  column_to_change,
+  "old_value_1" ~ "new_value_1",
+  "old_value_2" ~ "new_value_2",
+  "old_value_3" ~ "new_value_3"
+)
+```
+
+If you want to set a default value, you can use the `.default` argument. This is the value that will be used if the value in the column doesn’t match any of the values you’ve specified.
+
+```{r, eval=FALSE}
+case_match(
+  column_to_change,
+  "old_value_1" ~ "new_value_1",
+  "old_value_2" ~ "new_value_2",
+  "old_value_3" ~ "new_value_3",
+  .default = "default_value"
+)
+```
+
+To use this in our data, we can change the religion names to English. We use this inside a `mutate()` function, and then use the new column in our plot.
+
+```{r message=FALSE}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  mutate(Kon2AggLang_noDM = case_match(
+    Kon2AggLang_noDM,
+    "Römisch-Katholisch" ~ "Catholic",
+    "Evangelisch-Reformiert" ~ "Protestant",
+    "Andere, ohne, unbekannt" ~ "Other religions",
+  ))
+```
+
+```{r message=FALSE}
+religion |> 
+  group_by(StichtagDatJahr, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |> 
+  mutate(Kon2AggLang_noDM = case_match(
+    Kon2AggLang_noDM,
+    "Römisch-Katholisch" ~ "Catholic",
+    "Evangelisch-Reformiert" ~ "Protestant",
+    "Andere, ohne, unbekannt" ~ "Other religions",
+  )) |> 
+  ggplot() +
+  geom_line(aes(x = StichtagDatJahr, y = total_people, color = Kon2AggLang_noDM)) +
+  labs(
+    title = "Number of people in each religion in Zurich",
+    x = "Year",
+    y = "Number of people",
+    color = "Religion"
+    ) +
+  lims(y=c(0, 300000))
+```
+
+## Classwork: Making your own
+
+Make a graph of your choice using this data.
+
+Here is an example you could try to copy, but make whatever you like.
+
+```{r message=FALSE, echo=FALSE}
+
+religion_for_plot <- religion |>
+  filter(StichtagDatJahr == 2023) |>
+  group_by(QuarLang, Kon2AggLang_noDM) |>
+  summarise(total_people = sum(AnzBestWir)) |>
+    mutate(Kon2AggLang_noDM = case_match(
+    Kon2AggLang_noDM,
+    "Römisch-Katholisch" ~ "Catholic",
+    "Evangelisch-Reformiert" ~ "Protestant",
+    "Andere, ohne, unbekannt" ~ "Other religions",
+  )) |> 
+  filter(Kon2AggLang_noDM != "Other religions")
+
+religion_order <- religion_for_plot |> 
+  group_by(QuarLang) |>
+  summarise(
+    pct_catholic = sum(total_people[Kon2AggLang_noDM == "Catholic"]) / sum(total_people),
+    ) |> 
+  arrange(desc(pct_catholic)) |> 
+  pull(QuarLang)
+
+plt_1 <- religion_for_plot |> 
+  mutate(QuarLang = factor(QuarLang, levels = religion_order)) |>
+  mutate(Kon2AggLang_noDM = factor(Kon2AggLang_noDM, levels = c("Other religions", "Protestant", "Catholic"))) |>
+  ggplot() +
+  geom_col(aes(y = QuarLang, x = total_people, fill = Kon2AggLang_noDM), position = "fill") +
+  labs(
+    title = "Number of people in each major religious group",
+    subtitle = "Zurich, 2023",
+    x = "Ratio",
+    y = "Gemeinde",
+    fill = "Religion"
+  )
+
+plt_1
+```
+
+## Modifying existing plots
+
+We should always label our graphs so that people know what they’re looking at. We can do this using the labs() function. Often, we don’t want to do everything in one step, so we can save our plot as an object, and then add labels to it later.
+
+```{r}
+#| eval=FALSE
+plt <- # your plot code goes here.
+```
+
+## Labels
+
+```{r}
+plt_1 <- plt_1 + 
+  labs(
+    title = "Catholics vs Protestants in different Zurich neighborhoods",
+    subtitle = "Zurich, 2023",
+    x = "Ratio",
+    y = "Gemeinde",
+    fill = "Religion"
+  )
+plt_1
+```
+
+## Themes
+
+When you look at enough social science stuff, you’ll notice that a lot of the graphs look like these; using the default colors, fonts, and layouts provided by GGplot. This is fine, but we can do better. R comes with some built-in themes that you can use to make your graphs look a little more polished. Here are a couple examples:
+
+```{r}
+plt_1 + theme_minimal()
+```
+
+```{r}
+plt_1 + theme_light()
+```
+
+```{r}
+plt_1 + theme_bw()
+```
+
+There are also some themes that you can install from other packages. Here are a few of my favorites:
+
+```{r}
+library(hrbrthemes)
+plt_1 + theme_ipsum()
+```
+
+```{r}
+#| message = FALSE
+library(ggdark)
+plt_1 + dark_theme_gray()
+```
+
+```{r}
+#| echo = FALSE
+invert_geom_defaults()
+```
+
+## Changing the font
+
+This works a little differently on everybody’s computer, but you can also change the font of your graphs using `base_family` inside the theme. Here’s an example using the [Iosevka font](https://github.com/be5invis/Iosevka), one of my personal favorite coding fonts:
+
+You, of course, are restricted to the fonts that you have on your computer.
+
+```{r}
+plt_1 + theme_minimal(base_family = "iosevka")
+```
+
+## Modifying themes
+
+You can also modify themes to make them look the way you want. Here’s an example of how you can move the legend to the bottom of the graph, and rotate the x-axis labels. If you want to leave out some text from your plot, you can replace it with `element_blank()`.
+
+```{r}
+plt_1 + 
+  theme_minimal(base_family = "iosevka") + 
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+```
+
+Let’s call this good, and add this to our plot object.
+
+```{r}
+plt_1 <- plt_1 + 
+  theme_minimal(base_family = "iosevka") + 
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+```
+
+## Color schemes
+
+In addition to changing the theme of the layout, you can also specify colors used in the plot itself. There are two ways to do this: use a pre-made color palette, or specify the colors yourself.
+
+One option is to use the [RColorBrewer](https://r-graph-gallery.com/38-rcolorbrewers-palettes.html) package, which has a bunch of color palettes that are good for different types of data.
+
+```{r}
+library(RColorBrewer)
+
+plt_1 + scale_fill_brewer(palette = "Set1")
+```
+
+Finally, you can set your own colors using the `scale_fill_manual()` function. This function takes a list of colors that you want to use in your plot. Here’s an example of how you can set the colors to be cyan, blue, and green. Note that you can enter colors using the name of a color, a hex code, or as RGB values. We’ll go over this in more detail on week 9.
+
+```{r}
+plt_1 + scale_fill_manual(
+  values = c(
+    "#11bbbb", 
+    "blue",
+    rgb(0.1, 0.8, 0.1)
+    )
+  )
+```
+
+## Classwork: Making stuff look good
+
+For some practice, let’s make some charts that investigate what things might be related to traffic fatalities. This comes from the AER package, and is a data set of traffic fatalities in the US in the 1980s.
+
+I've also included one data cleaning step for you; the years were coded as factors, when we probably want them as numeric values.
+
+```{r}
+#| message = FALSE
+
+library(AER)
+data("Fatalities")
+
+Fatalities <- 
+  Fatalities |>
+  mutate(year = as.numeric(as.character(year)))
+
+```
+
+I’ve made some basic graphs below. Your job is to make them look good, with themes and color schemes.
+
+Plot 1: Traffic deaths and drinking age
+
+```{r}
+Fatalities |> 
+  filter(year == 1982) |>
+  mutate(fatalities_per_cap = fatal / pop) |>
+  mutate(drinkage = factor(drinkage)) |>
+  ggplot() +
+  geom_jitter(aes(x = drinkage, y = fatalities_per_cap, color = drinkage), width = 0.2) +
+  labs(title = "Fatalities per capita by legal drinking age", x = "Legal drinking age", y = "Fatalities per capita")
+```
+
+Plot 2: Traffic deaths and young drivers
+
+```{r}
+Fatalities |> 
+  filter(year == 1982) |>
+  mutate(fatalities_per_cap = fatal / pop) |>
+  mutate(young_drivers_rounded = round(youngdrivers, 2) * 100) |> 
+  mutate(young_drivers_rounded = factor(young_drivers_rounded)) |>
+  group_by(young_drivers_rounded) |>
+  summarise(fatalities_per_cap = mean(fatalities_per_cap)) |>
+  ggplot() +
+  geom_col(aes(x = young_drivers_rounded, y = fatalities_per_cap)) +
+  labs(title = "Fatalities by young drivers in population", x = "Percent Young drivers", y = "Fatalities")
+```
+
+Plot 3: Traffic deaths and income
+
+```{r}
+Fatalities |> 
+  filter(year == 1982) |>
+  mutate(fatalities_per_cap = fatal / pop * 1e6) |>
+  mutate(state = toupper(state)) |>
+  ggplot(aes(x = income, y = fatalities_per_cap)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Fatalities by income", x = "Income", y = "Fatalities")
+  
+```
+
+## Discrete vs continuous scales
+
+One last thing to note is that there’s a difference between continuous and discrete values. Continuous values are things like age, height, or weight; things that can be any number. Discrete values are things like canton or religion; things that can only be a few different values.
+
+When you’re making a graph, you need to make sure that you’re using the right type of scale. For continuous values, you can use `scale_color_gradient()`. For discrete values, you can use `scale_color_discrete()`.
+
+## Color vs fill
+
+Remember that **color** defines the outer edge of the shape, or the color of something with no center. **Fill** defines the inside of the shape, if it exists.
+
+Each of these scales has different functions for scale and fill, for example there is `scale_fill_gradient()` and `scale_color_gradient()`.
+
+## Faceting
+
+One last important tool is faceting. This is when you make a bunch of small graphs, each showing a different part of your data. This is useful when you have a lot of data, and you want to show how different parts of your data are related.
+
+Sometimes our graph is too busy, like this example below. It’s hard to read, and you have a difficult time understanding what’s going on.
+
+```{r}
+Fatalities |>
+  filter(state %in% c("ny", "ca", "tx", "fl", "il")) |> 
+  mutate(fatalities_per_cap = fatal / pop) |>
+  ggplot() +
+  geom_col(aes(x=year, y=fatalities_per_cap, fill=state), position="dodge") +
+  scale_fill_brewer(palette = "Set1")
+```
+
+Instead, we can add an element to GGplot, `facet_wrap()`, which will make a bunch of small graphs, each showing a different part of your data.
+
+```{r}
+Fatalities |>
+  filter(state %in% c("ny", "ca", "tx", "fl", "il")) |> 
+  mutate(fatalities_per_cap = fatal / pop) |>
+  ggplot() +
+  geom_col(aes(x=year, y=fatalities_per_cap, fill=state), position="dodge") +
+  facet_wrap(~state) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")+
+  labs(
+    title = "Fatalities per capita by state",
+    x = "Year",
+    y = "Fatalities per capita"
+    ) +
+  theme(
+    legend.position = "none"
+  )
+```
+
+`facet_wrap()` has a few options that you can use to make your graphs look better. For example, you can specify how many columns you want with the `ncol` argument.
+
+```{r}
+Fatalities |>
+  filter(state %in% c("ny", "ca", "tx", "fl", "il")) |> 
+  mutate(fatalities_per_cap = fatal / pop) |>
+  mutate(year = as.numeric(as.character(year))) |> 
+  ggplot() +
+  geom_col(aes(x=year, y=fatalities_per_cap, fill=state), position="dodge") +
+  facet_wrap(~state, ncol= 6) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")+
+  labs(
+    title = "Traffic fatalities per capita by state",
+    subtitle = "1982-1988",
+    x = "Year",
+    y = "Fatalities per capita"
+    ) +
+  theme(
+    legend.position = "none"
+  )
+```
+
+For completeness sake, I can also recode the state names to be more readable using `case_match()`.
+
+```{r}
+Fatalities |>
+  filter(state %in% c("ny", "ca", "tx", "fl", "il")) |> 
+  mutate(fatalities_per_cap = fatal / pop) |>
+  mutate(year = as.numeric(as.character(year))) |> 
+  mutate(state = case_match(
+    state,
+    "ny" ~ "New York",
+    "ca" ~ "California",
+    "tx" ~ "Texas",
+    "fl" ~ "Florida",
+    "il" ~ "Illinois",
+  )) |>
+  ggplot() +
+  geom_col(aes(x=year, y=fatalities_per_cap, fill=state), position="dodge") +
+  facet_wrap(~state, ncol= 6) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")+
+  labs(
+    title = "Traffic fatalities per capita by state",
+    subtitle = "1982-1988",
+    x = "Year",
+    y = "Fatalities per capita"
+    ) +
+  theme(
+    legend.position = "none"
+  )
+```
+
+## Scales
+
+R often tries to automatically set the numbers for your x and y axes, but sometimes it chooses something inappropriate, like scientific notation, as above. You can force it to use a different scale using the `scale_y_continuous()` function, with an argument for the type of value you want displayed. Here’s an example of how you can force the y-axis to use regular numbers:
+
+```{r}
+Fatalities |>
+  filter(state %in% c("ny", "ca", "tx", "fl", "il")) |> 
+  mutate(fatalities_per_cap = fatal / pop) |>
+  mutate(year = as.numeric(as.character(year))) |> 
+  mutate(state = case_match(
+    state,
+    "ny" ~ "New York",
+    "ca" ~ "California",
+    "tx" ~ "Texas",
+    "fl" ~ "Florida",
+    "il" ~ "Illinois",
+  )) |>
+  ggplot() +
+  geom_col(aes(x=year, y=fatalities_per_cap, fill=state), position="dodge") +
+  facet_wrap(~state, ncol= 6) +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")+
+  labs(
+    title = "Traffic fatalities per capita by state",
+    subtitle = "1982-1988",
+    x = "Year",
+    y = "Fatalities per capita"
+    ) +
+  theme(
+    legend.position = "none"
+  ) +
+  scale_y_continuous(labels = scales::number)
+```
+
+## Homework: & Practice
+
+This week's homework is very open-ended. Simply find a data set that interests you, and make a plot using GGplot. Make sure to use the techniques we've learned in class, and make it look as good as possible.
+
+Please email me the code you used to make your plots, as well as a saved .png of your plot in a document named week_6_homework\_(your_name).R by Tuesday, April 4th. We will have a show-and-tell in class.

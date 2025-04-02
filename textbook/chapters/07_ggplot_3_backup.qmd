@@ -1,0 +1,151 @@
+# GGplot 3: Advanced charts and graphs
+
+TODO: Write this chapter
+
+Beyond bars, lines, and points Using the grammar of graphics
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggrepel)
+```
+
+
+```{r}
+install.packages("titanic")
+library(titanic)
+
+titanic_train
+```
+
+
+## Packages that extend GGplot
+
+### GGhalves
+
+```{r}
+install.packages("gghalves")
+```
+
+```{r}
+library(gghalves)
+```
+
+```{r warning=FALSE}
+titanic_train |> 
+  mutate(Survived = case_match(
+    Survived,
+    1 ~ "Survived",
+    0 ~ "Died"
+  )) |>
+  ggplot(aes(x = Survived, y = Age)) +
+  geom_half_point(side = "l") +
+  geom_half_violin(side="r") +
+  labs(title = "Age distribution of Titanic passengers",
+       x = element_blank(),
+       y = "Age") +
+  theme_minimal()
+```
+
+## Replicating the COVID Spiral
+
+To replicate Martina’s chart, we first need to load some COVID data, and assign the number of COVID cases to the “size” aesthetic, which will create a thicker line where there are more cases. Here, we’re setting Y to 1, which will create a horizontal line, and the size of the line will be determined by the number of cases.
+
+I’ve downloaded the data from [Our World in Data](https://ourworldindata.org/covid-cases).
+
+```{r message=FALSE, warning=FALSE}
+covid <- read_csv("input_data/daily-new-confirmed-covid-19-cases-per-million-people.csv")
+```
+
+```{r}
+colnames(covid) <- c("country", "day", "cases")
+```
+
+```{r}
+covid |> 
+  distinct(country)
+```
+
+
+```{r}
+covid <- covid |> 
+  filter(country == "Myanmar") |> 
+  select(day, cases)
+
+covid |> 
+  ggplot(aes(x = day, y = 1, size = cases)) +
+  geom_line()
+```
+
+
+
+That’s nice, but this is a line, not a spiral. We need to use something we haven’t talked about before, changing the coordinate system. Adding `coord_polar()` to the plot will change the coordinate system to polar coordinates, which will wrap the line around the plot, instead of the usual XY Cartesian coordinates.
+
+```{r}
+covid |> 
+  ggplot(aes(x = day, y = 1, size = cases)) +
+  geom_line() +
+  coord_polar()
+```
+
+Closer, but we have a circle here, not a spiral as was intended. To do this, we need to add some tilt to the line. Going back to the Cartesian coordinate system, the simplest way to tilt a line is to change the Y value.
+
+We can do this by setting it to a range of values, which will create a line that goes from the bottom left to the top right of the plot. I’ve here used `1:nrow(covid)`, which will create a line that goes from 1 to the number of rows in the data frame.
+
+```{r}
+covid |> 
+  ggplot(aes(x = day, y = 1:nrow(covid), size = cases)) +
+  geom_line() +
+  labs(title = "Daily new confirmed COVID-19 cases per million people in Switzerland",
+       x = "Day",
+       y = "Cases per million people")
+```
+
+```{r}
+covid |> 
+  ggplot(aes(x = day, y = 1:nrow(covid), size = cases)) +
+  geom_line() +
+  labs(title = "Daily new confirmed COVID-19 cases per million people in Switzerland",
+       x = "Day",
+       y = "Cases per million people") +
+  coord_polar()
+```
+
+```{r}
+covid |> 
+  mutate(year_day = yday(day) - 1) |>
+  mutate(year = year(day)) |> 
+  mutate(days_from_start = (year - 2020) * 365) |>
+  mutate(days_from_start = days_from_start + year_day + 500) |> 
+  mutate(year_label = ifelse(year_day == 1, as.character(year), NA)) |>
+  ggplot(aes(x = year_day, y = days_from_start, group = year, size = cases, label = year_label)) +
+  lims(y = c(0, 2500)) +
+  geom_line() +
+  geom_label(size = 2) +
+  labs(
+    title = "Daily new confirmed COVID-19 cases",
+    size = "Cases \n per million",
+    ) +
+  coord_polar() +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  theme(
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title = element_blank(),
+        panel.grid.major = element_blank(),
+        ) +
+  scale_size_continuous(range = c(0.5, 9)) +
+  scale_x_continuous(breaks = seq(1, 350, 90), labels = c("Jan", "Apr", "Jul", "Oct"))
+```
+
+The [viridis](https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html) color maps come with ggplot, and are a good default.
+
+```{r}
+# plt_1 + scale_fill_viridis_d()
+```
+
+This is actually a large collection of color palettes, and you can specify which one you want to use using the “option” argument.
+
+```{r}
+# plt_1 + scale_fill_viridis_d(option = "F")
+```

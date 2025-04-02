@@ -1,0 +1,232 @@
+# Interactivity and the internet
+
+The first library we’ll look at is Plotly, a powerful library that allows you to create interactive graphics in R. First, you’ll need to install some stuff:
+
+```{r}
+#| eval=FALSE
+
+install.packages("plotly")
+install.packages("gapminder")
+install.packages("htmlwidgets")
+```
+
+Loading this, we need both the `plotly` and `htmlwidgets` libraries. We’ll also load the `gapminder` library, which contains a data set we’ll use for this example.
+
+```{r}
+library(tidyverse)
+library(plotly)
+library(gapminder) # Interesting data set about life expectancy, population, gdp, etc.
+library(htmlwidgets)
+```
+
+Let’s take a look at the data set. What do you think each of these columns means?
+
+```{r}
+gapminder |> glimpse()
+```
+
+TODO: Use this as example
+
+```{r}
+nordic_gdp <- gapminder |> 
+  filter(country %in% c("Finland", "Norway", "Sweden", "Denmark", "Iceland")) |> 
+  ggplot(aes(x = year, y = gdpPercap, color = country)) +
+  geom_line() +
+  labs(title = "GDP per capita in Nordic countries",
+       x = "Year",
+       y = "GDP per capita") +
+  theme_minimal()
+
+interactive_plt <- nordic_gdp |>
+  ggplotly()
+
+interactive_plt
+```
+
+This is great, but how would you share this with someone who doesn’t have R installed? You can save the plot as an HTML file, and send it to them.
+
+Just like with `ggsave()`, we can do this with the `saveWidget()` function, which takes the plot and saves it as an HTML file.
+
+```{r}
+saveWidget(interactive_plt, "population_by_continent.html", selfcontained = TRUE)
+```
+
+## Animation
+
+Suppose we want to look at the relationship between GDP per capita and life expectancy over time. This is maybe a bit too much infromation for a static graph, but with an animation, we can see how these two variables change over time.
+
+Let’s start by making a simple scatter plot of GDP per capita and life expectancy, with the color of the points representing the continent.
+
+```{r}
+ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point()
+```
+
+A good tool to know about is log scaling. This is useful when you have a wide range of values, and you want to see the differences in the lower values. This is especially useful for GDP per capita, which can range from a few hundred to tens of thousands. We can do this here with the scale_x_log10() function.
+
+TODO: Move this to tips and tricks
+
+```{r}
+ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point() +
+  scale_x_log10()
+```
+
+But what is logarithmic scaling? Instead of increasing by a fixed amount, the axis increases by a fixed multiple. We can see on the plot we’ve made that GDP hare is increasing by 1000, 10000, 100000, etc. It’s good to indicate this somewhere on the plot, so as not to mislead the viewer.
+
+```{r}
+ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point(aes(frame = year, id=country))  +
+  scale_x_log10() +
+  labs(title = "Life expectancy vs GDP per capita", x = "GDP per capita (Log 10 scale)", y = "Life expectancy")
+```
+
+Now, to animate it!
+
+To do this, all we need to do is add two more aesthetics to our g`eom_point: frame = year` and `id = country`. This tells the plot to animate the points by year, and to identify each point by country.
+
+Just like frames in a movie, each frame in our animation will be a different year.
+
+id is a bit more complicated. It tells the plot to keep track of each point by country, so that it can animate the points correctly. You’ll see in our final plot that the points move around, and transition smoothly from year to year.
+
+R will give us a little warning about this, but it’s nothing to worry about. ggplot doesn’t know how to handle the `id` and `frame` aesthetics, but plotly does.
+
+```{r}
+pop_vs_gdp_plot <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+  geom_point(aes(frame = year, id=country))  +
+  scale_x_log10() +
+  labs(title = "Life expectancy vs GDP per capita", x = "GDP per capita (Log 10 scale)", y = "Life expectancy")
+```
+
+```{r}
+pop_vs_gdp_plot |>
+  ggplotly()
+```
+
+## Classwork: Make an interactive map
+
+```{r}
+library(rnaturalearth)
+
+asia_geodata <- ne_countries(continent = "asia", scale = "medium", returnclass = "sf")
+```
+
+```{r}
+asia_geodata <- asia_geodata |> 
+  mutate(gdp_per_cap = gdp_md / pop_est * 1e6)
+
+asia_pop_gdp_plot <- asia_geodata |>
+  ggplot(aes(fill=gdp_per_cap, text = name)) +
+  geom_sf() +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +
+  theme_minimal() +
+  labs(title = "GDP per capita in Asia",
+       fill = "GDP per capita",
+       caption = "Data from Natural Earth")
+
+asia_pop_gdp_plot |>
+  ggplotly()
+```
+
+## Beyond ggplotly
+
+plotly is its own project, with its own syntax. When we call ggplotly(), we’re converting a ggplot object into a plotly object. But we can also make plotly plots directly, without ggplot.
+
+The code that we used for our little animation:
+
+```{r}
+pop_vs_gdp_plot_ggplotly <- ggplot(
+  gapminder,
+  aes(gdpPercap,
+      lifeExp,
+      color = continent)
+  ) +
+  geom_point(aes(frame = year))  +
+  scale_x_log10()
+
+pop_vs_gdp_plot_ggplotly |> ggplotly()
+```
+
+```{r}
+pop_vs_gdp_plot_plotly <- plot_ly(
+  gapminder,
+  x = ~gdpPercap,
+  y = ~lifeExp,
+  color = ~continent,
+  frame = ~year) |> 
+  add_markers() |> # The plotly equivalent of geom_point()
+  layout(xaxis = list(type = "log")) # Log scaling
+
+pop_vs_gdp_plot_plotly
+```
+
+Plotly has a lot more that you can do with it. Its syntax is essentially the same as GGplot. The following book is a great introduction:
+
+[plotly-r.com/](https://plotly-r.com/)
+
+## Generating HTML
+
+These widgets are cool, but sometimes we need to generate a whole report.
+
+Your final project for this class will be to create a web report that uses interactive graphics. The easiest way to do this with R is to export a Quarto document.
+
+![](images/interactive/final_proj.png)
+
+When you first make the project, there will be some options for you at the top. Just set it to these, and you should be good to go.
+
+```         
+format:
+  html:
+    embed-resources: true
+editor: visual
+```
+
+![](images/interactive/quarto_workbook.png)
+
+### Rendering the project
+
+To preview the document, just hit the “render” button above your document. This will do two things:
+
+1.  Save the document as an HTML file.
+2.  Open the HTML file in your web browser.
+
+### Formatting the document
+
+Quarto uses a form of Markdown, which is a simple way to format text. Here are some tips.
+
+-   You can make headers with #,
+-   subheaders with ##, ###, etc.
+-   You can make lists with -,
+-   You can make links with [text](url).
+
+You can find more information about Markdown here:
+
+https://quarto.org/docs/authoring/markdown-basics.html
+
+### Hiding code
+
+You can add a few useful options to your code blocks to make them look better in the final document, as follows:
+
+This will not show the code in the final document:
+
+```         
+#| echo: false
+```
+
+This will not show any messages (like ‘data loaded’, ‘library whatever’) in the final document:
+
+```         
+#| message: false
+```
+
+This will not show any warnings in the final document. Beware, this can hide important information:
+
+```         
+#| warning: false
+```
+
+## Homework: A simple CV
+
+1.  Create a Quarto notebook, and make 10-line CV using it. If you prefer not to share your personal information, you can make a fictional resume.
+
+2.  Add at least one interactive graphic to your resume, about something in your life. This could be a map of places you’ve been, a timeline of your life, a graph of the number of pets you’ve had over your life, or whatever else.

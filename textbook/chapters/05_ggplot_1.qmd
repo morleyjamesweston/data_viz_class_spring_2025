@@ -1,0 +1,592 @@
+---
+code-annotations: below
+---
+
+# GGplot 1: Basic charts and graphs
+
+# GGplot 1
+
+We've finally done it! We've reached the point where we can stop cleaning data over and over, and start making some plots.
+
+But first, we must remember that form follows function, and we'll first concentrate on making plots that are *useful*, before we make them *beautiful*.
+
+Our first task this week is to use data visualization to explore a data set and come to some conclusions about it.
+
+We'll use the `charlatan` package to create a fake data set, different for each student, and then use ggplot to gain some insights about it. This will be fake data, but is inspired by a real data set in my own PhD project.
+
+To start, we'll install the `charlatan` package, which is just something that helps us create fake data.
+
+```{r}
+#| eval=FALSE
+install.packages("charlatan")
+```
+
+Next, please copy and paste this big block of code into a new R script. This will make a data frame called news_users.
+
+Be careful! every time you run this code, you'll get new data with new correlations.
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+```{r}
+library(charlatan)
+
+survey_questions <- c(
+  "q1" = "How often do you read the news?",
+  "q2" = "Are you interested in international politics?",
+  "q3" = "Do you think the news is biased?",
+  "q4" = "Are you satisfied with your life?",
+  "q5" = "Do you think the news is too negative?",
+  "q6" = "How many children do you have?",
+  "q7" = "How many hours per day are you on your phone?",
+  "q8" = "Do you use Instagram?",
+  "q9" = "Do you use Twitter?",
+  "q10" = "Do you use Tiktok?"
+)
+
+news_users <- tibble(
+  name = ch_name(n = 1000, locale = "fr_FR"),
+  gender = sample(c("m", "w"), 1000, replace = TRUE),
+  age = sample(18:65, 1000, replace = TRUE)
+  
+) |>
+  bind_cols(
+    tibble(
+      job = ch_job(n = 10, locale = "en_US"),
+      salary = sample(seq(2e4, 2e5, 1e3), 10, replace = TRUE)
+    ) |>
+      sample_n(1000, replace = TRUE) |>
+      mutate(salary = salary + sample(seq(-1e4, 1e4, 1e3), 20))
+  ) |> bind_cols(
+    tibble(
+      q1 = sample(
+        c("Never", "Rarely", "Sometimes", "Often", "Always"),
+        1000,
+        replace = TRUE
+      ),
+      q2 = sample(1:7, 1000, replace = TRUE),
+      q3 = sample(c("Yes", "No", "I don't know"), 1000, replace = TRUE),
+      q4 = sample(1:7, 1000, replace = TRUE),
+      q5 = sample(c("Yes", "No", "I don't know"), 1000, replace = TRUE),
+      q6 = sample(c(rep(0, 5), 1:5), 1000, replace = TRUE),
+      q7 = sample(0:8, 1000, replace = TRUE),
+      q8 = sample(c(TRUE, FALSE), 1000, replace = TRUE),
+      q9 = sample(c(TRUE, FALSE), 1000, replace = TRUE),
+      q10 = sample(c(TRUE, FALSE), 1000, replace = TRUE)
+    )
+  ) |> 
+  mutate(minutes_reading_news = (age - 25) / 3) |> 
+  mutate(minutes_reading_news = if_else(gender == "m", minutes_reading_news - 3, minutes_reading_news + 3)) |> 
+  mutate(
+    minutes_reading_news = case_when(
+      q1 == "Never" ~ minutes_reading_news - 4,
+      q1 == "Rarely" ~ minutes_reading_news - 2,
+      q1 == "Sometimes" ~ minutes_reading_news,
+      q1 == "Often" ~ minutes_reading_news + 4,
+      q1 == "Always" ~ minutes_reading_news + 6
+    )
+  ) |> 
+  mutate(minutes_reading_news = minutes_reading_news + q2 * 1.2 - 3) |> 
+  mutate(minutes_reading_news = if_else(salary > 1e5, minutes_reading_news + 3, minutes_reading_news - 3)) |>
+  mutate(minutes_reading_news = if_else(
+    q3 == "Yes",
+    minutes_reading_news + sample(c(0, 5), 1),
+    minutes_reading_news)
+    )  |> 
+  mutate(minutes_reading_news = minutes_reading_news - (q4 * sample(c(0,2), 1))) |> 
+  mutate(minutes_reading_news = if_else(
+    q5 == "Yes",
+    minutes_reading_news - sample(c(0, 5), 1),
+    minutes_reading_news)
+    ) |> 
+  mutate(minutes_reading_news = minutes_reading_news + (q6 * sample(c(0,2), 1))) |>
+  mutate(minutes_reading_news = minutes_reading_news + (q7 * sample(c(0,2), 1))) |>
+  mutate(minutes_reading_news = if_else(q8, minutes_reading_news + sample(c(0, 5), 1), minutes_reading_news)) |>
+  mutate(minutes_reading_news = if_else(q9, minutes_reading_news + sample(c(0, 5), 1), minutes_reading_news)) |>
+  mutate(minutes_reading_news = if_else(q10, minutes_reading_news - 5, minutes_reading_news)) |> 
+  mutate(minutes_reading_news = minutes_reading_news + rnorm(1000, 0, 1)) |>
+  mutate(minutes_reading_news = if_else(minutes_reading_news < 0, 0, minutes_reading_news)) 
+```
+
+Let's take a look at this data! We can use **glimpse()** to get a quick overview of the data.
+
+```{r}
+news_users |> glimpse()
+```
+
+This is the sort of thing you encounter all the time when you're doing science. We have one data frame that contains a whole bunch of information of different types, and our goal is to figure out if it's all related in some way.
+
+In the pretense of this data set, let's imagine we measured how much time people spent reading the news each day. That is the meaning of the `minutes_reading_news` variable. This is a **continuous** variable, meaning that it is a number that could have any value. We can use `summary()` to get a quick overview of this variable. (Note that this is different from `summarize()` which is used in the tidyverse.)
+
+```{r}
+news_users |> select(minutes_reading_news) |> summary()
+```
+
+This gives us the minimum, 1st and 3rd quartiles, mean, median, and maximum from that column.
+
+Next, we also have some information about the people in the data set. We have their gender, age, job, and salary. Sometimes, a value is **categorical**, meaning it is one of several choices. In this case, people can have one of 10 jobs. We could use `distinct()` to list all the unique values from that column.
+
+```{r}
+news_users |> distinct(job)
+```
+
+Finally, we have 10 survey questions that we asked people. In real life, these are always a bit of a mess, so I've made them a bit messy for you too. You can see the questions in a separate object.
+
+```{r}
+survey_questions
+```
+
+Note that the survey questions are sometimes different types of variables. For example, q1 is a categorical variable, q2 is a continuous variable, and q8 is a binary variable. A **binary** variable is one that has one of two variables, in this case TRUE or FALSE. We can also use `summary()` function to get a quick overview of these variables.
+
+```{r}
+news_users |> select(q8) |> summary()
+```
+
+So far, we've used `select(column_name)` to select columns, or `select(-column_name)` to exclude columns. We also have some more advanced options for selecting columns. For example, we can use `starts_with("q")` to select all columns that start with "q", which gives us all the survey questions, and then pipe them into `summary()`.
+
+```{r}
+news_users |> select(starts_with("q")) |> summary()
+```
+
+So, our goal in this super scientific study is to figure out which variables are related to the amount of time people spend reading the news. Are older people more likely to read news than younger people? Are people with higher salaries more likely to read the news? Are people who think the news is biased more likely to read the news? Let's visualize our data to be able to answer these questions without ever having to do any math.
+
+## GGplot
+
+The core of this course is ggplot, a package tha
+
+G.G. stands for Grammar of Graphics, because it gives us a way to describe the components of a plot. It's based on the influential book [The Grammar of Graphics](https://link.springer.com/book/10.1007/0-387-28695-0) by Leland Wilkinson.
+
+To start, we'll pipe our data set into the `ggplot()` function. From here, we can start building our charts. As you can see, we currently have a plot, but there's nothing there!
+
+```{r}
+news_users |> ggplot()
+```
+
+This is because every ggplot needs at least 3 things:
+
+1.  Data (We have already piped this into GGplot)
+2.  Aesthetics (What data should go with which visual properties)
+3.  Geometry (What the visualization should look like)
+
+We have our data, but let's add the next two.
+
+### Aesthetics
+
+Our first task is to define the aesthetics, what something should look like. We do this with the `aes()` function, which goes inside our ggplot function.
+
+First, we can define what goes on the X axis, and what goes on the Y axis.
+
+```{r}
+news_users |> ggplot(aes(x = age, y = minutes_reading_news))
+```
+
+We can see some improvement, we have data and aesthetics, but no geometry. Let's add some geometry in the form of points.
+
+## Scatterplots
+
+Let's start with a super basic method of visualizing data: scatter plots.
+
+A scatter plot is just a plot where each point represents a single observation, usually with one variable on the x-axis and one variable on the y-axis. We can use the **geom_point()** geometry to make scatter plots.
+
+`ggplot()` has a different syntax than what we've done so far; we add things onto the plot with the `+` operator, like so:
+
+```{r}
+news_users |>
+  ggplot(aes(x = age, y = minutes_reading_news)) +
+  geom_point()
+```
+
+And we have a plot!
+
+What do you think? Is there a relationship between age and the amount of time people spend reading the news? What else can we learn from this plot?
+
+## Boxplots
+
+A second, more advanced type of plot is a boxplot. Boxplots are useful for comparing the distribution of a continuous variable across different categories. We can use the **geom_boxplot()** geometry to make boxplots, like so:
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_boxplot(aes(x=gender, y=minutes_reading_news))
+```
+
+A boxplot shows the median, quartiles, and outliers of a continuous variable. Let's take a minute to learn how to interpret these plots.
+
+The line in the center is the median; the value that separates the top 50% of the data from the bottom 50%. The box represents the interquartile range, which is the range that contains the middle 50% of the data; from the bottom 25% to the top 25%. The whiskers extend to the most extreme data points that are not considered outliers. Outliers are shown as individual points.
+
+What can we learn from this plot? Is there a difference in the amount of time people spend reading the news? If someone showed you this this plot in a scientific paper, would you find it convincing?
+
+### Factors vs continuous variables
+
+Let's now look at the first survey question. This is a categorical variable, so we can again use a boxplot to compare the distribution of the continuous variable across the different categories.
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_boxplot(aes(x=q1, y=minutes_reading_news))
+```
+
+Question 1 was: "How often do you read the news?"
+
+It looks like they were pretty honest on this question, as the boxplot shows a clear trend. However, this plot is kind of a mess: the categories are in alphabetical order, not in the order of the question. We can fix this by changing the type of the variable from a **character** to a **factor.**
+
+What is a factor? A factor is a type of variable that has a fixed number of possible values. In this case, the possible values are "Never", "Rarely", "Sometimes", "Often", and "Always". We can change the type of a variable using the **factor()** function. The **levels** argument specifies the order of the levels.
+
+```{r}
+news_users |>
+  mutate(q1 = factor(q1, levels = c("Never", "Rarely", "Sometimes", "Often", "Always"))) |> 
+  ggplot() +
+  geom_boxplot(aes(x=q1, y=minutes_reading_news))
+```
+
+That's much better! Now we can see them in the order we intended. Looks like a pretty clear trend to me. What more can we see from this plot?
+
+Most of these survey questions should be considered factors. For example, in survey question 2, "Are you interested in international politics?", we get answers on a scale of 1 to 7. This is a categorical variable, not a continuous variable. We can change it to a factor and make a boxplot to see if there is a relationship between this question and the amount of time people spend reading the news.
+
+We can change q2 to a factor, but we don't need to specify the levels because they are already in the correct order.
+
+```{r}
+news_users |>
+  mutate(q2 = factor(q2)) |> 
+  ggplot() +
+  geom_boxplot(aes(x=q2, y=minutes_reading_news))
+```
+
+What do you think? Is there a relationship between this question and the amount of time people spend reading the news?
+
+## Density plots
+
+Density plots are another analytic tool we have, but they can require some work to get your mind around. Imagine you had some data of different values, and you stacked them on top of each other.
+
+![A galton board shows how you can simulate the normal distribution via random chance.](images/ggplot_1/galton_board.mp4)
+
+You could then draw a smoothed line estimating how many data points are around each value. This is a density plot. The figure below shows stacked dots and density plots for a normal, exponential, and uniform distribution.
+
+::: {layout-ncol="2"}
+```{r echo=FALSE}
+library(ggdist)
+
+
+sample_data <- tibble(
+  variable_1 = c((rnorm(200) * 100) + 200, rexp(200) * 100, runif(200, 0, 500)),
+  group_1 = rep(c("Normal", "Exponential", "Uniform"), each = 200)
+) |> 
+  filter(variable_1 > 0) |> 
+  filter(variable_1 < 500)
+sample_data |>
+  ggplot() +
+  geom_dots(aes(x=variable_1)) + 
+  facet_wrap(~group_1, ncol= 1) +
+  theme_minimal() +
+  labs(title = "Stacked Dots plot",
+       x = "Variable 1",
+       y = "Count"
+       ) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```
+
+```{r echo=FALSE}
+sample_data |>
+  ggplot() +
+  geom_density(aes(x=variable_1), fill = "#dddddd") + 
+  facet_wrap(~group_1, ncol= 1) +
+  theme_minimal() +
+  labs(title = "Density plot",
+       x = "Variable 1",
+       y = "Density"
+       ) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```
+:::
+
+We can use the **geom_density()** geometry to make density plots, like so:
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_density(aes(x=minutes_reading_news))
+```
+
+From this, we can see that there are a lot of people who hardly read any news at all, and almost none who read 30 minutes per day.
+
+Something we can do is to add another variable to our aesthetics, color. If we assign this to another column, for example q10, we can stack plots on top of each other, with each value of q10 being a different color.
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_density(aes(x=minutes_reading_news, color=q10))
+```
+
+Let's take a moment to look at this plot. Question 10 was: "Do you use Tiktok?" We can see that a lot of people who use TikTok don't read the news at all; there's a high density of them near 0. What else can we learn from this plot?
+
+These are some of the first plots I go to when I get some new data, so let's get some practice using them with our data set.
+
+## Classwork: Explore your data set
+
+Let's get some practice using these fundamental tools.
+
+1.  Create appropriate scatterplots, boxplots, or density plots for survey questions 3-9 as you see appropriate.
+2.  Which variables seem to have an effect on the minutes spent reading the news?
+3.  Which variables are different from your classmates? Note that you all have different results in the ramdomly generated data set, so you'll have similarly different correlations.
+
+## Multiple geometries
+
+One trick that we can use is to combine multiple geometries in the same plot. This can be useful when we want to show multiple aspects of the data at the same time. For example, we can combine a scatterplot with a smooth line to show the relationship between two variables.
+
+Let's go back to our age plot and add a smooth line to it using **geom_smooth()**.
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_point(aes(x = age, y = minutes_reading_news)) +
+  geom_smooth(aes(x = age, y = minutes_reading_news))
+```
+
+Now we can more clearly see the relationship with a handy little line. Very cool!
+
+## Parametric vs fixed variables
+
+Here's something that messes people up all the time: whether to put a variable inside the `aes()` function or not. These do very different things!
+
+If you put a variable inside the `aes()` parameter, ggplot will treat it as a variable that changes across the data. For example, if you put `color=gender` inside `aes()`, ggplot will make a different color for men and women.
+
+If you put a variable outside the `aes()` parameter, ggplot will treat it as a fixed value. For example, if you put `color="black"` outside `aes()`, ggplot will make all the points black. Let's see the difference:
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_point(aes(x = age, y = minutes_reading_news, color=gender)) +
+  geom_smooth(aes(x = age, y = minutes_reading_news), color = "black")
+```
+
+Here, the color of the line is just set to black, but the color of the points depends on the gender column. We could just as easily set the line to be dependent on the gender, as so:
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_point(aes(x = age, y = minutes_reading_news, color=gender)) +
+  geom_smooth(aes(x = age, y = minutes_reading_news, color = gender))
+```
+
+## Labels and titles
+
+So, let's say we want to finalize a plot. We can add a title, subtitle, and labels to make it more clear. We can use the **labs()** function to add these to a plot. Adding a title and labels are a hard requirement for any plot you make in a scientific paper.
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_point(aes(x = age, y = minutes_reading_news, color=gender)) +
+  geom_smooth(aes(x = age, y = minutes_reading_news, color = gender)) +
+  labs(
+    title = "Minutes spent reading the news by age",
+    subtitle = "Data from a simulated survey of 1000 people",
+    x = "Age",
+    y = "Minutes spent reading the news"
+  )
+```
+
+## Drawing order
+
+One small thing: the order of the geoms matters. If you put the **geom_smooth()** before the **geom_point()**, the points will be on top of the line. If you put the **geom_point()** before the **geom_smooth()**, the line will be on top of the points. Pretty simple, but it can make a big difference in how your plot looks.
+
+```{r}
+news_users |>
+  ggplot() +
+  geom_smooth(aes(x = age, y = minutes_reading_news, color = gender)) +
+  geom_point(aes(x = age, y = minutes_reading_news, color=gender)) +
+  labs(
+    title = "Minutes spent reading the news by age",
+    subtitle = "Data from a simulated survey of 1000 people",
+    x = "Age",
+    y = "Minutes spent reading the news"
+  )
+```
+
+## Saving plots
+
+Now, let's pretend we're happy with our plot and want to save it.
+
+We can use the **ggsave()** function to save a plot; just change the file name to **.png**, **.jpg**, **.pdf**, **.svg**, or any other number of file formats. We should also specify the width, height, dpi, and units of the plot. R has a bad habit of changing things to inches, so if your plot is 2.5 times too big, check your **units** argument.
+
+```{r}
+#| eval=FALSE
+ggsave("minutes_reading_news_vs_age.pdf", width = 20, height = 15, dpi = 300, units = "cm")
+```
+
+Note that **ggsave()** will save the last plot that you made. If you want to save a different plot, you can save it as an variable and then use **ggsave()**.
+
+```{r}
+#| eval=FALSE
+
+plot_i_want_to_save <- news_users |>
+  ggplot() +
+  geom_smooth(aes(x = age, y = minutes_reading_news, color = gender)) +
+  geom_point(aes(x = age, y = minutes_reading_news, color=gender)) +
+  labs(
+    title = "Minutes spent reading the news by age",
+    subtitle = "Data from a simulated survey of 1000 people",
+    x = "Age",
+    y = "Minutes spent reading the news"
+  )
+
+ggsave("minutes_reading_news_vs_age.pdf", plot_i_want_to_save, width = 20, height = 15, dpi = 300, units = "cm")
+```
+
+## Classwork: Finalizing plots
+
+From your earlier classwork, save the plots that you think are the most interesting. Make sure they have titles, subtitles, and labels.
+
+1.  Make your favorite plots into environmental variables using the **\<-** operator.
+2.  Save each plot as a .png file.
+
+## Processing data into a plot
+
+Just like when we were cleaning data, we can use the pipe operator to process data before we make a plot. This can be useful when we want to summarize data or change the order of the levels of a factor. Here, we'll use the **group_by()** and **summarize()** functions to calculate the mean amount of time people spend reading the news for each level of question 1.
+
+```{r}
+news_users |> 
+  group_by(q1) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news))
+```
+
+We can then turn this into a bar plot using `geom_col()` (short for column).
+
+```{r}
+news_users |> 
+  group_by(q1) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |> 
+  mutate(q1 = factor(q1, levels = c("Never", "Rarely", "Sometimes", "Often", "Always"))) |> 
+  ggplot() +
+  geom_col(aes(x = q1, y = mean_minutes_reading_news)) +
+  labs(
+    title = "Stated vs. actual time spent reading news",
+    x = "Stated news frequency on survey question\n(means, n=1000)",
+    y = "Actual time spent reading news"
+  )
+```
+
+## The best geoms, and some tricks for each.
+
+GGplot has a ton of stuff to learn, and I figure out a new trick every paper I write. For more handy tips and tricks, I recommend you check out the [R Graph Gallery](https://www.r-graph-gallery.com/). When you need some inspiration, this place can give you some code to copy and play around with.
+
+Here are some of the most useful geoms, and some tricks for each.
+
+### geom_line()
+
+Everyone likes a line plot. It's a great way to show trends over time or across a continuous variable. We can use the **geom_line()** geometry to make line plots, like so:
+
+```{r}
+news_users |>
+  group_by(age) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |>
+  ggplot() +
+  geom_line(aes(x = age, y = mean_minutes_reading_news))
+```
+
+However, we can see that this plot is a bit misleading, because the Y axis doesn't start at 0. By default, R sets the edges of your chart to wherever your data is. Sometimes, you want to make sure your chart starts and stops at a certain place, which you can do with the **lims()** function. X and y in **lims()** takes two values in a vector, the minimum and maximum values of the axis, like so:
+
+```{r}
+news_users |>
+  group_by(age) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |>
+  ggplot() +
+  geom_line(aes(x = age, y = mean_minutes_reading_news)) +
+  lims(y = c(0, 30))
+```
+
+### geom_col()
+
+When someone thinks of a chart, they usually think of a bar chart. We can use the **geom_col()** geometry to make bar charts, like so:
+
+```{r}
+news_users |> 
+  group_by(job) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |>
+  ggplot() +
+  geom_col(aes(x = job, y = mean_minutes_reading_news))
+```
+
+On careful inspection, we'll see that this looks like garbage. There are a few ways to fix this, but the easiest is to just flip the chart on its side. Feel free to be creative with your charts!
+
+```{r}
+news_users |> 
+  group_by(job) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |>
+  ggplot() +
+  geom_col(aes(y = job, x = mean_minutes_reading_news))
+```
+
+Second tip: Remember back to the **factor()** function? We can use it to order the bars in a bar chart. This can be useful when you want to show the bars in a specific order, like from smallest to largest.
+
+here, we'll first arrange the data by the mean amount of time people spend reading the news, and then use **factor()** to order the bars by this value. This "locks in" the order of the bars, so ggplot won't change it.
+
+```{r}
+news_users |> 
+  group_by(job) |>
+  summarize(mean_minutes_reading_news = mean(minutes_reading_news)) |>
+  arrange(mean_minutes_reading_news) |>
+  mutate(job = factor(job, levels = job)) |>
+  ggplot() +
+  geom_col(aes(y = job, x = mean_minutes_reading_news))
+```
+
+### geom_jitter(): a more random scatterplot.
+
+I like scatterplots. They hide the least amount of data from the viewer, but they only really work if both variables are continuous. If, for example, I want to make a scatterplot of q7, which is coded on a scale from 1 to 7. A scatterplot will technically work, but isn't fantastic.
+
+```{r}
+news_users |> 
+  ggplot() +
+  geom_point(aes(x = q7, y = minutes_reading_news))
+```
+
+In this case, we can use **geom_jitter()** to add a bit of randomness to the points. This can be useful when you have a lot of data points that overlap, and you want to see them all.
+
+```{r}
+news_users |> 
+  ggplot() +
+  geom_jitter(aes(x = q7, y = minutes_reading_news))
+```
+
+We can tweak the amount of jitter with the **width** argument, and maybe make the points a bit smaller with the **size** argument, like so:
+
+```{r}
+news_users |> 
+  ggplot() +
+  geom_jitter(aes(x = q7, y = minutes_reading_news), width = 0.1, size = 0.3)
+```
+
+### geom_smooth()
+
+We earlier learned about `geom_smooth()`, a way to add a regression line to a plot. This can be useful when you want to show the relationship between two variables, but don't want to show all the data points. However, by default, it adds a curvy line. Sometimes, we're interested in the straight linear relationship between two variables. We can use the **method** argument to specify the type of regression line we want. For example, we can use `method = "lm"` to add a linear regression line, like so:
+
+```{r}
+news_users |> 
+  ggplot() +
+  geom_jitter(aes(x = q7, y = minutes_reading_news), width = 0.1, size = 0.3) +
+  geom_smooth(aes(x = q7, y = minutes_reading_news), method = "lm")
+```
+
+There's a lot more to learn! Next week, we'll focus on making them actually look good.
+
+## Check your knowledge
+
+1.  Know the difference between a continuous, categorical, and binary variable.
+2.  Understand the 3 basic parts of a ggplot object: data, aesthetics, and geometry.
+
+## Homework & Practice
+
+R has some built-in data sets that are always available to you, one of which is the `mtcars` data set, which describes some basic statistics about some cars from the mid-1970s. Some explanations of the various columns can be found [Here](https://rstudio-pubs-static.s3.amazonaws.com/61800_faea93548c6b49cc91cd0c5ef5059894.html).
+
+You already have the data (secretly) loaded into RStudio, and can access it through the variable `mtcars`.
+
+```{r}
+mtcars
+```
+
+Use this data to make 3 different plots (with 3 different geometries) showing the relationship between different car statistics. Make sure everything is properly labeled and makes sense.
+
+Please email me the code you used to make your plots in a document named week_5_homework\_(your_name).R by Tuesday, March 25th.

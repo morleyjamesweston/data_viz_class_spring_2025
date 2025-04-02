@@ -1,0 +1,41 @@
+# Geospatial packages {.unnumbered}
+
+Next week, we'll be working with maps and geospatial data. Working with this data can be somewhat difficult, and installing the packages can be a bit of a pain, so please make sure you have the following packages installed:
+
+```{r}
+#| eval=FALSE
+install.packages("sf")
+install.packages("ggspatial")
+install.packages("rnaturalearth")
+install.packages("rnaturalearthdata")
+install.packages("wbstats")
+install.packages("maps")
+
+
+library(remotes)
+remotes::install_github("ropensci/rnaturalearthhires")
+```
+
+If `sf` gives you trouble, you can try installing it from GitHub:
+
+```{r}
+#| eval=FALSE
+install.package("remotes")
+library(remotes)
+install_github("r-spatial/sf")
+```
+
+Make sure everything loads correctly before we start.
+
+```{r}
+#| eval=FALSE
+library(tidyverse)
+library(sf)
+library(ggspatial)
+library(rnaturalearth)
+library(wbstats)
+library(maps)
+```
+
+If you're still having trouble, please consider switching to the class server for the next class. Especially on Macs, the `sf` package can be a bit problematic, and for some, requires the use of [homebrew](https://formulae.brew.sh/formula/sf), which should only be used if you know what you're doing.
+

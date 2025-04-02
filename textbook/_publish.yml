@@ -1,0 +1,4 @@
+- source: project
+  quarto-pub:
+    - id: 25d6d921-494e-47db-97af-0f64e91aafee
+      url: 'https://mjw.quarto.pub/data-visualization-for-communication-science'

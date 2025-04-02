@@ -7,28 +7,45 @@ book:
   date: "2/4/2025"
   chapters:
     - index.qmd
-    - intro.qmd
-    - summary.qmd
-    - references.qmd
+    - chapters/installation.qmd
+    - chapters/01_tidyverse_1.qmd
+    - chapters/02_tidyverse_2.qmd
+    - chapters/03_tidyverse_3.qmd
+    - chapters/04_datasets.qmd
+    - chapters/05_ggplot_1.qmd
+    - chapters/06_ggplot_2.qmd
+    - chapters/07_ggplot_3.qmd
+    - chapters/08_aesthetics.qmd
+    - chapters/midterm_presentation.qmd
+    - chapters/before_geospatial.qmd
+    # - chapters/09_geospatial.qmd
+    # - chapters/10_interactivity.qmd
+    # - chapters/11_learning_to_learn.qmd
+    # - chapters/12_tables_and_stats.qmd
+    # - chapters/final_presentation.qmd
 
 bibliography: references.bib
 
 format:
   html:
     theme:
-      dark: darkly
       light: sandstone
-    mainfont: "Source Sans Pro"
-    monofont: "Iosevka"
-  pdf:
-    documentclass: scrreprt
+      dark: [darkly, base.scss]
+    # mainfont: "Source Sans Pro"
+    # monofont: "Iosevka"
+    df-print: "paged"
     toc: true
-    toc-depth: 2
-    number-sections: true
-    colorlinks: true
-    papersize: a4
-    mainfont: "Source Sans Pro"
-    monofont: "Iosevka"
+
+  # pdf:
+  #   documentclass: scrreprt
+  #   toc: true
+  #   toc-depth: 2
+  #   number-sections: true
+  #   colorlinks: true
+  #   papersize: a4
+  #   # mainfont: "Source Sans Pro"
+  #   # monofont: "Iosevka"
 
 editor: visual
+
 

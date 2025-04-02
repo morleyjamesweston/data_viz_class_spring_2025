@@ -1,0 +1,49 @@
+# Midterm presentations {.unnumbered}
+
+For your midterm project, you will be producing a series of data visualizations of your choice. You must find sources of data, clean it with R, and visualize it with GGplot.
+
+You will do these presentations in groups of 3-4 people, which will be assigned randomly in class on April 2. 
+
+1. You should find some data on a subject of your choice. This must include at least 2 separate sources of data, and you should join them together in some way.
+
+1. You should produce a Quarto document detailing your data cleaning and visualization process.
+
+1. I should be able to run this code from beginning to end on my computer without issues, so be sure to include download.file() code, and make sure everything runs without errors.
+
+1. Every code block should have an explanation of what you’re doing, written in your own words. Add comments to your code as necessary.
+
+1. You should produce 4 unique visualizations of your data, which illustrate an interesting finding or point.
+
+1. You should exclusively make use of R, the Tidyverse, and GGplot.
+
+1. You must also present your findings to the class as a short presentation. This must include:
+    - Your visualizations and the subject they describe.
+    - Your data cleaning process, and any challenges you faced.
+    
+1. Your presentation should be a maximum of 15 minutes.
+
+Please email me the presentation before noon on **Monday, April 14th.**
+
+Don’t procrastinate on this project too much! It would be a lot to do in one night. If you need help, suggestions, or ideas, feel free to email me.
+
+## Grading
+
+40% Data cleaning and code
+
+- Can the code be run from beginning to end without modification?
+
+- Did you explain every major step of your process?
+
+- Did you make use of the Tidyverse and some skills we’ve learned so far?
+
+- Would someone else be able to understand what you’ve done?
+
+50% Visualization quality
+
+- Are your plots easy to understand?
+
+- Do they sufficiently explain the subject?
+
+- Are they aesthetically pleasing and suitable for academic or journalistic publication?
+
+10% Presentation

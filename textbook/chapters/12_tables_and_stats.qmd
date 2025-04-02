@@ -1,0 +1,230 @@
+# Tables and statistics
+
+TODO: Install V8 and write this chapter
+
+For this class, we’ll be using some new packages, gt, gtsummary, and broom. Install and load them before we begin.
+
+```{r}
+#| eval = FALSE
+
+install.packages("gt")
+install.packages("gtsummary")
+install.packages("broom")
+install.packages("broom.helpers")
+install.packages("webshot2")
+```
+
+```{r}
+library(gt)
+library(gtsummary)
+library(broom)
+library(tidyverse)
+library(gapminder) # Interesting data set about life expectancy, population, gdp, etc.
+library(sf)
+```
+
+## Making nice tables
+
+13.1 Making nice tables
+
+Sometimes, our visualizations just won’t cut it, and we need to just make a table out of the data. To start out, we’ll once again use the gapminder data set.
+
+```{r}
+gapminder |> glimpse()
+```
+
+To make a table, simply use the gt() function. This creates a tidy looking table that we’ll be able to export.
+
+For our purposes, though, we’ll want to filter the data to only show Mongolia, so that our table will fit on a single page.
+
+```{r}
+gapminder |>
+  filter(country == "Mongolia") |>
+  gt()
+```
+
+
+## Exporting tables
+
+Similarly to ggsave(), we can use gtsave() to save our tables to a file. We can save them as a Word document, an HTML file, or a PNG image. This is going to make it easy to share with your collaborators and include in your reports.
+
+
+```{r}
+gapminder |>
+  filter(country == "Mongolia") |>
+  gt() |> 
+  gtsave("mongolia_table.docx")
+```
+
+```{r}
+gapminder |>
+  filter(country == "Mongolia") |>
+  gt() |> 
+  gtsave("mongolia_table.html")
+```
+
+```{r}
+gapminder |>
+  filter(country == "Mongolia") |>
+  gt() |> 
+  gtsave("mongolia_table.png")
+```
+
+## Classwork: Export a table
+
+1. Use some filtering, grouping, and summarizing to create a table that shows the average life expectancy by country in Europe.
+
+1. Export this table to a Word document.
+
+## Summary statistics
+
+Traditionally, a scientific paper will have two tables: one for the descriptive statistics and one for the regression results. The descriptive statistics table will show the mean, median, and standard deviation for continuous variables, and the count and percentage for categorical variables. The `tbl_summary()` function from the gtsummary package will do this for us automatically.
+
+```{r}
+gapminder |> 
+  select(-country) |> 
+  tbl_summary()
+```
+
+
+
+There are a lot of options that we can change in the tbl_summary() function. For example, we can change the type of variable, the label, the number of digits to round to, and the statistics to show.
+
+Here, we’ll change the type of the year variable to categorical, change the label of the year variable, round the lifeExp variable to two digits, and change the statistics to show for continuous and categorical variables.
+
+Gt is a very new package, so the way things work changes all the time. Don’t put too much brain power into memorizing this stuff, and just read the docs here:
+
+[GT](https://gt.rstudio.com/)
+
+[GTsummary](https://www.danieldsjoberg.com/gtsummary/index.html)
+
+
+```{r}
+gapminder |> 
+  select(-c(country, year)) |> 
+  tbl_summary(
+    type = list(year ~ "categorical"), # Change between continuous and categorical
+    label = list(year ~ "Year"), # Change the label without having to rename the column
+    digits = list(lifeExp ~ 2, pop ~ 0), # Change the number of digits to round to
+    statistic = list(
+      all_continuous() ~ c("{min}, {mean}, {max}"), # Change the statistics to show for continuous variables
+      all_categorical() ~ "{n} / {N} ({p}%)" # Change the statistics to show for categorical variables
+    ),
+    )
+```
+
+## How to read a regression model
+
+TODO: Explain better
+
+Next, in a scientific paper, we often run a regression model to see how different variables are related to each other. The lm() function in R will run a linear regression model for us. We can then use the summary() function to see the results.
+
+Here, I’m looking at the effect of the year on life expectancy. The lm() function takes the formula y ~ x, where y is the dependent variable and x is the independent variable. The summary() function will show us the results of the regression model.
+
+```{r}
+regression_model <- lm(lifeExp ~ year, data = gapminder)
+regression_model |> summary()
+```
+
+But what does this mean? The Estimate column shows the effect of the independent variable on the dependent variable. In this case, the year variable has a coefficient of 0.325, which means that for every year, the life expectancy increases by 0.325 years. The Pr(>|t|) column shows the p-value of the coefficient. In this case, the p-value is less than 0.05, which means that the effect of the year on life expectancy is statistically significant. R-squared is a measure of how well the model fits the data. It ranges from 0 to 1, with 1 being a perfect fit. In this case, the R-squared is 0.1898, which means that the year explains 19% of the variation in life expectancy.
+
+You can include multiple regressors, separated by a +, and this will condition on the other variables. Here, we condition on each continent, which is a categorical variable.
+
+```{r}
+regression_model <- lm(lifeExp ~ year + continent, data = gapminder)
+regression_model |> summary()
+```
+
+These regression tables can be exported as well, using the tbl_regression() function from the gtsummary package.
+
+```{r}
+regression_model |> tbl_regression()
+```
+
+To save it, you have to first convert it to a gt table using the `as_gt()` function, and then use the `gtsave()` function to save it to a file.
+
+## Classwork: Do a whole scientific study
+
+For our final classwork, you’re going to be a social scientist, and find the relationship between some statistics about European countries. You’ll need to find some data, clean it, and run a regression model to see how different variables are related to each other. You’ll then need to make a table of the descriptive statistics and a table of the regression results.
+
+This will bring together stuff we’ve learned throughout the course, so you’ll want to also look back at the previous lessons.
+
+1. First, load some data about a continent of your choice.
+
+```{r}
+library(rnaturalearth)
+
+europe <- ne_countries(continent = "Europe", returnclass = "sf")
+```
+
+2. Now, think of two things that might be related to each other. For example, you could look at the relationship between health spending and life expectancy. Use the wbsearch() function to find the indicators that you need.
+
+```{r}
+library(wbstats)
+
+wbsearch("health expenditure")
+wbsearch("life expectancy")
+```
+
+3. Next, load and clean the data, as we did before.
+
+```{r}
+health_expenditure <- wb_data(indicator = "SH.XPD.CHEX.GD.ZS", start_date = 2020, end_date = 2020)
+health_expenditure <- health_expenditure |> rename(spending = SH.XPD.CHEX.GD.ZS)
+health_expenditure |> glimpse()
+```
+
+```{r}
+life_expectancy <- wb_data(indicator = "SP.DYN.LE00.IN", start_date = 2020, end_date = 2020)
+life_expectancy <- life_expectancy |> rename(years_to_live = SP.DYN.LE00.IN)
+life_expectancy |> glimpse()
+```
+
+
+4. Now, join the data together and save it as a new data frame.
+
+
+```{r}
+europe_data <- europe |>
+  left_join(health_expenditure, by = c("iso_a3" = "iso3c")) |> 
+  left_join(life_expectancy, by = c("iso_a3" = "iso3c"))
+```
+
+5. Now, make a table of the basic summary statistics.
+
+TODO: do this.
+
+6. If you want, make a map of the data. We’ve done enough of this, so you can skip it if you like.
+
+```{r}
+europe_data |> 
+  ggplot() +
+  geom_sf(aes(fill = spending)) +
+  theme_minimal() +
+  lims(x = c(-20, 40), y = c(30, 80))
+```
+7. Before running the regression model, drop any missing values. You can do this with the drop_na() function.
+
+```{r}
+europe_data <- europe_data |> drop_na(spending, years_to_live)
+```
+
+8. Now, run a regression model.
+
+```{r}
+regression <- lm(years_to_live ~ spending + gdp_md, data = europe_data)
+regression |> summary()
+```
+
+9. Finally, make a table of the regression results.
+
+```{r}
+regression |> tbl_regression(
+  label = list(spending = "Health spending (% of GDP)",
+               gdp_md = "GDP (in million USD)")
+  )
+```
+
+And that’s science! All that would be left for you to do is write up your results and submit them to a journal. Good luck!
+
+

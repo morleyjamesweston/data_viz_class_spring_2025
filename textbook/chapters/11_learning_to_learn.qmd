@@ -1,0 +1,64 @@
+# Learning on your own
+
+TODO: Write this chapter
+
+```{r}
+library(eurostat)
+library(tidygraph)
+library(ggraph)
+
+rail_traffic <- get_eurostat("rail_pa_intcmng")
+
+rail_traffic |> 
+  filter(partner == "NL")
+```
+
+```{r}
+rail_traffic_network <- rail_traffic |> 
+  filter(TIME_PERIOD == "2023-01-01") |> 
+  filter(!str_starts(partner, "EU")) |>
+  filter(!str_starts(partner, "WORLD")) |>
+  select(partner, geo, values) |> 
+  mutate(values = replace_na(values, 0)) |> 
+  mutate(values = values * 1000) |> 
+  rename(
+    origin = partner,
+    destination = geo,
+    passengers_from= values
+  )
+
+rail_traffic_network <-
+  rail_traffic_network |> 
+  left_join(
+    rail_traffic_network |> 
+      rename(passengers_to = passengers_from), 
+    by = c("origin" = "destination", "destination" = "origin")
+  ) |> 
+  mutate(passengers_to = replace_na(passengers_to, 0)) |>
+  mutate(total_passengers = passengers_from + passengers_to) |> 
+  select(origin, destination, total_passengers) |> 
+  rowwise()
+
+rail_traffic_network <- rail_traffic_network |> 
+  mutate(temp_code = str_c(str_sort(c(origin, destination)), collapse = "-")) |>
+  group_by(temp_code) |> 
+  filter(row_number() == 1) |> 
+  ungroup() |>
+  select(-temp_code)
+```
+
+```{r}
+graph <- rail_traffic_network |> 
+  as_tbl_graph(directed = FALSE)
+
+graph |>
+  ggraph(layout = 'linear', circular = TRUE) +
+  geom_edge_arc(aes(linewidth=total_passengers, alpha = total_passengers)) + 
+  geom_node_point() +
+  coord_fixed() +
+  geom_node_label(aes(label=name), repel = FALSE) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggsave("output_data/rail_traffic.png", width = 25, height = 25, dpi = 300, unit="cm")
+```

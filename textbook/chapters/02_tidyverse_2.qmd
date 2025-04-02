@@ -1,0 +1,487 @@
+# Tidyverse 2: Data transformation
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+## Downloading data
+
+This week, we're going to look at three different common data formats in R. You'll find these all the time when you search for data online.
+
+Rather than downloading the files manually, we're going to use R to download them for us. This is a good way to automate the process, and also makes it easier to share the code with others.
+
+For this, we'll use the `download.file()` function. This takes two arguments:
+
+1.  The URL of the *file* to download
+2.  What you want the file to be named on your computer
+
+Make sure the file type matches the file type you're downloading. If you're downloading a .jpg file, the file name should end in .jpg.
+
+For example, if we wanted to download a picture from Wikipedia, we could use:
+
+```{r}
+#| eval=FALSE
+download.file(
+  "https://upload.wikimedia.org/wikipedia/commons/d/d8/Panthera_tigris_corbetti_(Tierpark_Berlin)_832-714-(118).jpg",
+  "picture_of_a_tiger.jpg"
+)
+```
+
+Then you'll have a cool picture of a tiger on your computer.
+
+## CSV
+
+First, we're going to look at a CSV file. CSV stands for "comma-separated values". These are two-dimensional tables, where each row is a line in the file, and each column is separated by a comma. Here's an example:
+
+```         
+"name","age","married"
+"Gunther",42,TRUE
+"Gerhard",38,TRUE
+"Heidi",29,FALSE
+```
+
+This evaluates to a simple table, like this:
+
+```{r echo=FALSE}
+read.csv(
+  text = '"name","age","married"
+"Gunther",42,TRUE
+"Gerhard",38,TRUE
+"Heidi",29,FALSE'
+)
+```
+
+These are great because you can open them in a text editor and read them, and are simple enough to edit. They're also easy to read into R.
+
+Despite the name, CSV files don't always use commas to separate the columns. Sometimes they use semicolons, or tabs, or other characters; the Swiss government really likes semicolons for some reason.
+
+Let's take a look at a real-world example. We're going to use the Swiss government's Bundesamt für Statistik (BFS) website to download some data, about incomes for every commune in Switzerland, originally from here:
+
+<https://www.atlas.bfs.admin.ch/maps/13/de/15830_9164_8282_8281/24776.html>
+
+We find the download link, and use `download.file()` to download it:
+
+```{r eval=FALSE}
+download.file(
+  "https://www.atlas.bfs.admin.ch/core/projects/13/xshared/csv/24776_131.csv",
+  "input_data/income.csv"
+)
+```
+
+Once again, let's take a look at the raw data. Open it in a text editor, and it should look something like this:
+
+```         
+"GEO_ID";"GEO_NAME";"VARIABLE";VALUE;"UNIT";"STATUS";"STATUS_DESC";"DESC_VAL";"PERIOD_REF";"SOURCE";"LAST_UPDATE";"GEOM_CODE";"GEOM";"GEOM_PERIOD";"MAP_ID";"MAP_URL"
+"1";"Aeugst am Albis";"Steuerbares Einkommen, in Mio. Franken";98;"Franken";"A";"Normaler Wert";"";"2017-01-01/2017-12-31";"ESTV";"2021-01-07";"polg";"Politische Gemeinden";"2017-01-01";"24776";"https://www.atlas.bfs.admin.ch/maps/13/map/mapIdOnly/24776_de.html"
+"1";"Aeugst am Albis";"Steuerbares Einkommen pro Einwohner/-in, in Franken";50443;"Franken";"A";"Normaler Wert";"";"2017-01-01/2017-12-31";"ESTV";"2021-01-07";"polg";"Politische Gemeinden";"2017-01-01";"24776";"https://www.atlas.bfs.admin.ch/maps/13/map/mapIdOnly/24776_de.html"
+"2";"Affoltern am Albis";"Steuerbares Einkommen, in Mio. Franken";391;"Franken";"A";"Normaler Wert";"";"2017-01-01/2017-12-31";"ESTV";"2021-01-07";"polg";"Politische Gemeinden";"2017-01-01";"24776";"https://www.atlas.bfs.admin.ch/maps/13/map/mapIdOnly/24776_de.html"
+```
+
+We can see the following:
+
+1.  The data is once again separated by semicolons.
+2.  This has no metadata row, the first row is the header.
+
+In the same way as we did last week, we can use **Import Dataset** to import the data into RStudio. You can see complete instructions in the previous chapter. The code that we get back should look something like this:
+
+```{r}
+#| message=FALSE
+income_per_gemeinde <- read_delim("input_data/income.csv",
+  delim = ";", escape_double = FALSE, trim_ws = TRUE
+)
+```
+
+Another option is to use use read_delim() on the URL itself. This reads the data directly from the URL, without downloading it to your computer:
+
+```{r eval=FALSE}
+income_per_gemeinde <- read_delim("https://www.atlas.bfs.admin.ch/core/projects/13/xshared/csv/24776_131.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
+```
+
+This can be a little dangerous, however, as the data might change, or the website could go down, and your data is lost forever.
+
+### Looking at the data with `glimpse()`
+
+This data has a lot of columns, and isn't always the easiest to read. One convenient way to glimpse at the data is the **glimpse()** function, which shows us the first few rows of each column:
+
+```{r}
+income_per_gemeinde |> glimpse()
+```
+
+This flips the data frame on its side, so that the columns are now rows, and the rows are now columns. This makes it easier to see the data types, but is really only useful for taking a peek at our data.
+
+For this example, we'll want the GEO_NAME, VARIABLE, and VALUE columns. We can use the **select()** function to select only those columns:
+
+```{r}
+income_per_gemeinde <- income_per_gemeinde |>
+  select(GEO_NAME, VARIABLE, VALUE)
+```
+
+We can now easily look at the data that we're interested in:
+
+```{r}
+income_per_gemeinde |> head()
+```
+
+## Pivoting data with `pivot_wider()`
+
+However, we can see this data still has a pretty big problem: the VARIABLE column contains the name of the variable, and the VALUE column contains the value of the variable. This means that the VALUE column actually represents two things at the same time: The total income of the commune, and the per-capita income of the commune.
+
+This is a common problem in data analysis. Recalling [Wickham's paper](#week-2-homework-2), we want every column to represent a single variable, and every row to represent a single observation, which he calls "tidy data".
+
+<!-- ![British author George Orwell, depicted with a wide and a long mustache. Like Orwell's facial hair, tabular data can be in wide or long format.](images/tidyverse_2/orwell_wide_vs_long.png) -->
+
+We can fix this by using the **pivot_wider()** function, which takes the values in one column, and turns them into columns. We'll use the VARIABLE column as the column names, and the VALUE column as the values. To do this, we'll use two arguments for `pivot_wider()`: `names_from`, which is the column that we want to use as the column names, and `values_from`, which is the column that we want to use as the values.
+
+```{r}
+income_per_gemeinde <- income_per_gemeinde |>
+  pivot_wider(names_from = VARIABLE, values_from = VALUE)
+```
+
+This can be hard to get your brain around, so let's take a look at the data before and after:
+
+### Before
+
+```{r echo=FALSE, message=FALSE}
+del <- read_delim("input_data/income.csv",
+  delim = ";", escape_double = FALSE, trim_ws = TRUE
+) |>
+  select(GEO_NAME, VARIABLE, VALUE) |> 
+  mutate(VARIABLE = str_sub(VARIABLE, 1, 30))
+
+del
+```
+
+### After
+
+```{r}
+#| echo=FALSE
+del <- income_per_gemeinde
+colnames(del) <- c("GEO_NAME", "St. Eink, in Mio.", "St. Eink. pro Einw")
+del
+```
+
+(Column names were abbreviated to fit on the screen)
+
+The opposite of `pivot_wider()` is `pivot_longer()`, which takes columns and turns them into rows. You can really only understand this from practice, so you'll get more exposure to it next week.
+
+## Renaming columns with `colnames()` and `rename()`
+
+This data is now in the shape we want it, but the column names are still an absolute mess. I really don't want to type `Steuerbares Einkommen pro Einwohner/-in, in Franken` every time I want to refer to the per-capita income column. We can rename all the columns by just assigning a vector of names to the `colnames()` function:
+
+```{r}
+colnames(income_per_gemeinde) <- c("name", "total_income", "per_capita_income")
+income_per_gemeinde |> head()
+```
+
+Note that if we only wanted to rename one column, it might be easier to use the **rename()** function:
+
+With the `rename()` function, remember that the new name comes first, and the old name comes second.
+
+```{r}
+income_per_gemeinde <- income_per_gemeinde |>
+  rename(gemeinde_name = name)
+income_per_gemeinde |> head()
+```
+
+## Math on columns.
+
+A little housecleaning: The total income is in millions of francs, so we'll multiply it by 1,000,000 to get the actual value. This will save some confusion later on.
+
+To change a column, we can just assign a new value to it using `mutate()`:
+
+```{r}
+income_per_gemeinde <- income_per_gemeinde |>
+  mutate(total_income = total_income * 1e6)
+```
+
+## Sorting data with `arrange()`
+
+We can sort the data by using the **arrange()** function. This takes the column that we want to sort by, and the direction that we want to sort in. We can use `desc()` to sort in descending order, or `asc()` to sort in ascending order. For example, to sort by per-capita income, we can use:
+
+```{r}
+income_per_gemeinde <- income_per_gemeinde |>
+  arrange(desc(per_capita_income))
+
+income_per_gemeinde |> head(10)
+```
+
+This gives us the 10 communes with the highest per-capita income.
+
+## Class Work: Getting data from a data frame
+
+Use this data set to answer the following questions:
+
+1.  Which is the poorest commune in Switzerland, on a per-capita basis?
+2.  Which commune in Switzerland has the highest total income?
+3.  Can you use these two columns to figure out the population of each commune?
+
+## JSON
+
+Our next data format is JSON. JSON stands for "JavaScript Object Notation", as it was originally designed to be used in JavaScript. It's a very flexible format, and is used in pretty much every programming language.
+
+Let's download and take a look at some JSON, originally from [here](https://data.bs.ch/explore/dataset/100192):
+
+This is a list of names given to babies in Basel, by year. We can download it using:
+
+```{r}
+#| eval=FALSE
+download.file(
+  "https://data.bs.ch/api/v2/catalog/datasets/100192/exports/json",
+  "input_data/basel_babies.json"
+)
+```
+
+When we look at the raw data, we can see that it's a list of key-value pairs, where the keys are the column names, and the values are the values. This is a very flexible format, and can be used to represent pretty much any data structure. This is a huge dataset
+
+```         
+[{"jahr": "2012", "geschlecht": "M", "vorname": "Jacob", "anzahl": 1},
+ {"jahr": "2012", "geschlecht": "W", "vorname": "Ja\u00ebl", "anzahl": 1},
+ {"jahr": "2012", "geschlecht": "M", "vorname": "Jai", "anzahl": 1},
+ ...
+ ...
+ ...
+ {"jahr": "2019", "geschlecht": "W", "vorname": "Tara", "anzahl": 2},
+ {"jahr": "2019", "geschlecht": "W", "vorname": "Tatjana", "anzahl": 1},
+ {"jahr": "2019", "geschlecht": "W", "vorname": "Tenzin", "anzahl": 1}
+]
+```
+
+However, R doesn't really have the ability to read JSON on it's own, so we'll need to use a package to read it. We'll use the **jsonlite** package, which has a function called **read_json()** that reads JSON files into R. Install and load the library in the usual way:
+
+```{r}
+#| eval=FALSE
+install.packages("jsonlite")
+```
+
+```{r}
+#| message=FALSE
+library(jsonlite)
+```
+
+Now you can use the function `read_json()` to read the file into R like so:
+
+```{r}
+basel_babies <-
+  read_json("input_data/basel_babies.json", simplifyVector = TRUE)
+```
+
+`simplifyVector` is a parameter that tells R to simplify the data structure, assuming that it is in a tabular format. You'll almost always want to use this option, unless you're working with a very complex JSON file.
+
+Let's look at the result:
+
+```{r}
+basel_babies |> head()
+```
+
+As an English-language class, let's rename the columns to English:
+
+```{r}
+basel_babies <- basel_babies |>
+  rename(
+    name = vorname,
+    year = jahr,
+    sex = geschlecht,
+    total = anzahl,
+  )
+
+basel_babies |> head()
+```
+
+## Group_by and Summarize
+
+This is a pretty big data set! We can see the number of rows using the **nrow()** function:
+
+```{r}
+nrow(basel_babies)
+```
+
+That's a lot of babies. But sometimes we need to condense this information into a single number.
+
+For this, we can use the `group_by()` and `summarize()` [^02_tidyverse_2-1] functions. These are a little tricky to understand, so let's take a look at an example. Let's say we want to know how many babies were born in Basel per year. We can use `group_by()` to group the data by year, and then `summarize()` to summarize the data.
+
+[^02_tidyverse_2-1]: R is friendly to both Brits and Americans, so it has both the `summarise()` and `summarize()` functions, which do the exact same thing.
+
+```{r}
+basel_babies |>
+  group_by(year) |>
+  summarise(total_by_year = sum(total))
+```
+
+We first grouped the data by year, and then summarized the data by summing the total column. You can use quite a few different functions in `summarize()`, including `sum()`, `mean()`, `median()`, `min()`, `max()`, and many more.
+
+## RDS and friends
+
+.RDS files are a special format that R uses to save data. They're a *binary format*, so you can't open them in a text editor, but they're very fast to read and write. They're also very easy to use, because they save all the metadata about the data frame, including the column names, data types, and more.
+
+These are often used for your intermediary data sets, to just save something quickly and share it with a colleague. you can simply write them with the `write_rds()` function:
+
+```{r}
+basel_babies |> write_rds("babies.rds")
+```
+
+Likewise, you can read them with the `read_rds()` function:
+
+```{r}
+#| eval = FALSE
+read_rds("babies.rds")
+```
+
+**However**, there are two problems with RDS files:
+
+1.  They only work in R. If you want to share your data with a colleague who uses Python, they're out of luck.
+2.  They're not human-readable. If you want to take a peek at the data, you can't just open it in a text editor.
+
+## Class work: Grouping and summarizing
+
+Let's say we want to know how many Basel babies have names for each letter of the alphabet.
+
+1.  Use `mutate()` to make a new column with the first letter of each name. One function you can use inside mutate is `str_sub()`. `str_sub()` takes a string, and returns a part of that string. For example, `str_sub("hello", 1, 4)` returns "hell", from the first to the 4th letters of hello.
+
+2.  Use `group_by()` and `summarize()` to count the number of babies with each first letter.
+
+3: Bonus: download the package `stringi`, which has the function `stri_trans_general()`. Look up how it works using `?stri_trans_general`. Use this to get rid of all the ãccènt märks ìn thë nàměs.
+
+Your resulting table should look like this:
+
+```{r echo=FALSE}
+library(stringi)
+basel_babies <- read_rds("babies.rds")
+
+initial_df <- basel_babies |>
+  mutate(first_letter = str_sub(name, 1, 1)) |>
+  mutate(first_letter = stri_trans_general(first_letter, "Latin-ASCII")) |> 
+  group_by(first_letter) |>
+  summarise(total = sum(total))
+
+initial_df |>
+  head(10)
+```
+
+## XLSX
+
+Our last data format for the day is XLSX. This is a proprietary format, and is used by Microsoft Excel. I'd discourage your form using this unless you have to, but sometimes you'll find it in the wild, and you might have less gifted colleagues who insist on using it.
+
+Let's download and take a look at some XLSX data, originally from the US Census Bureau:
+
+```{r}
+#| eval=FALSE
+download.file(
+  "https://www2.census.gov/programs-surveys/decennial/2020/data/apportionment/apportionment-2020-table02.xlsx",
+  "input_data/state_population.xlsx"
+)
+```
+
+Of course, you can always open them in Excel, but that's not very reproducible. Instead, we'll use the **readxl** package to read the data into R.
+
+Load the library in the usual way:
+
+```{r}
+library(readxl)
+```
+
+Now, you can click on your downloaded file in the file editor, and import it just like you did with the CSV file. You can see complete instructions in the [last chapter](#import-csv).
+
+The code that we get back should look something like this:
+
+```{r}
+state_population <- read_excel("input_data/state_population.xlsx",
+  skip = 3
+)
+```
+
+Let's take a look at the data frame we get back:
+
+```{r}
+state_population |> head()
+```
+
+We have three columns:
+
+1.  AREA
+2.  RESIDENT POPULATION (APRIL 1, 2020)
+3.  This cell is intentionally blank.
+
+First, let's rename the columns to something a little more sensible:
+
+```{r}
+colnames(state_population) <- c("state_or_territory", "population", "blank")
+```
+
+Next, we can get rid of the `blank` column. A quick way to do this is to use the `select()` function with a minus sign in front of the column name that we don't want:
+
+```{r}
+state_population <- state_population |>
+  select(-blank)
+
+state_population
+```
+
+When we look at the data frame, we can see that the last few rows should be removed, but maybe Puerto Rico should be included in our calculations. [^02_tidyverse_2-2]
+
+[^02_tidyverse_2-2]: https://en.wikipedia.org/wiki/Political_status_of_Puerto_Rico
+
+```{r echo=FALSE}
+state_population |>
+  tail(10)
+```
+
+There are a couple ways we could do this, but for now let's:
+
+1.  Make a new data frame with just P.R.
+2.  Remove the last 5 rows of the data frame.
+3.  Combine the two data frames.
+4.  Remove the P.R. dataframe from memory.
+
+First, we use `filter()` to make a 1-row data frame with just Puerto Rico:
+
+```{r}
+puerto_rico_temp <- state_population |>
+  filter(state_or_territory == "Puerto Rico")
+puerto_rico_temp
+```
+
+Second, we can use `head()` to select the first 51 rows of the data frame:
+
+```{r}
+state_population <- state_population |>
+  head(51)
+state_population
+```
+
+Third, we row-bind the two data frames together:
+
+```{r}
+state_population <- state_population |>
+  bind_rows(puerto_rico_temp)
+
+state_population
+```
+
+When we look at the tail of the data frame, we can see that Puerto Rico is now included.
+
+## Deleting data with `rm()`
+
+Finally, we remove the temporary data frame from memory using `rm()`, which is short for "remove":
+
+```{r}
+rm(puerto_rico_temp)
+```
+
+### Check your knowledge
+
+Review the functions we've learned so far. What do each of these do?
+
+1.  pivot_wider()
+2.  pivot_longer()
+3.  arrange()
+4.  group_by()
+5.  summarize()
+
+### Homework
+
+1.  Find a country's statistical office website
+2.  Find an interesting data set
+3.  Use download.file() to download the file
+4.  Load the file as a data frame in R
+5.  Clean the data as necessary, to show something interesting about this country.
+6.  Screenshot the final data table and email it to me, along with the code used to produce the document, titled `week_3_homework_(your_name).R`. We will present these in the next class.

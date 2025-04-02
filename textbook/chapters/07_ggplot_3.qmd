@@ -1,0 +1,568 @@
+# GGplot 3: Advanced charts and graphs
+
+This week, we're going to be working on one larger project; re-creating and improving a spiral-shaped plot of COVID-19 cases, published [In the New York Times](https://web.archive.org/web/20250207203414/https://www.nytimes.com/2022/01/06/opinion/omicron-covid-us.html) several years ago.
+
+![The original graphic.](images/ggplot_3/spiral_chart_original.png)
+
+There were several criticisms of the chart.
+
+1. The x axis is [longer for each year;](https://www.practicalreporting.com/blog/2022/1/11/why-the-nyt-spiral-graph-is-a-failure-and-a-success) the length of the line for 2020 is shorter than the one for 2021, making it hard to compare infection rates over time
+
+1. The spiral is [off-center](https://eagereyes.org/blog/2022/the-ny-times-covid-spiral-is-off-center) and isn't centered on the page, making the whole thing seem a bit janky.
+
+While there have been [several](https://x.com/Wattenberger/status/1479276091751768065) [remixes](https://x.com/soustha/status/1479588387556249609) of the original, we'll today focus on recreating a version of the spiral chart.
+
+This will involve integrating our data processing into the chart, as well as doing some data transformations to make ggplot do some things that aren't "out of the box".
+
+## Getting the data
+
+To start, we'll use the `COVID19` package to get some data on COVID-19 cases. You can find better, more up-to-date data [elsewhere](https://github.com/owid/covid-19-data), but the data set gets really big and unwieldy.
+
+```{r eval=FALSE}
+install.packages("COVID19")
+```
+
+The package contains one function, `covid19()`, which returns a data frame with COVID-19 data. Let's load the data and see what we're working with.
+
+```{r message=FALSE, verbose = FALSE, output = FALSE}
+library(tidyverse)
+library(COVID19)
+
+covid_data = covid19()
+```
+
+```{r message=FALSE, verbose = FALSE}
+covid_data |> glimpse()
+```
+
+Looking back on the chart we're trying to recreate, we can see that really the only data we need is the date and the number of confirmed cases. This data set also lists every country, so we'll filter it down to just one country. I'm going to go with Switzerland. We'll then select the date and the number of confirmed cases, as that's the only data we'll need in the end.
+
+```{r}
+ch_covid_data <- covid_data |> 
+  filter(administrative_area_level_1 == "Switzerland") |> 
+  select(date, confirmed)
+
+ch_covid_data
+```
+
+Just to check that we have the data we need, let's plot the number of confirmed cases over time.
+
+```{r warning=FALSE}
+ch_covid_data |> 
+  ggplot(aes(x = date, y = confirmed)) +
+  geom_line()
+```
+
+This looks pretty good! However, we have to deal with a little bit of missing data.
+
+First, we can see that towards the end of the pandemic, the number of confirmed cases was only reported about once a week. This means that we have to fill in the missing values with the last known value.
+
+```{r}
+ch_covid_data |> tail(20)
+```
+
+## Replacing missing values with `fill()`
+
+We can use the `fill()` function to fill in the missing values. This takes the last known value above and fills it in below, until the next known value is found.
+
+Here, we're looking at the *total confirmed cases*, so filling in the missing values with the last known value is a good idea. If these were *new cases*, it would be a different story, we'd probably want to fill in the missing values with 0.
+
+```{r}
+ch_covid_data <- ch_covid_data |>
+  fill(confirmed, .direction = "down") 
+
+ch_covid_data |> tail(20)
+```
+
+However, there are still some missing values at the beginning of the data set, before COVID was seen in Switzerland.
+
+```{r}
+ch_covid_data |> head(20)
+```
+We can simply replace these missing values with 0, using `replace_na()`.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(confirmed = replace_na(confirmed, 0))
+
+ch_covid_data |> head(20)
+```
+
+Let's plot the data again to confirm that we didn't mess anything up.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = date, y = confirmed))
+```
+Yep! This looks about the same as the last one, but now we have no missing values.
+
+## Calculating new daily cases
+
+However, this data set has a slight problem: it represents the total number of confirmed cases. We want to plot the number of new cases each day. We can calculate this by taking the difference between the number of confirmed cases today and the number of confirmed cases yesterday.
+
+To get yesterday's number of confirmed cases, we can use the `lag()` function. This function shifts the column up by one row, so that the value in the first row is now in the second row, the value in the second row is now in the third row, and so on.
+
+We'll be left with 1 `NA` value in the first row, as there is no value before the first row. We can replace this with 0 using the `default` argument.
+
+
+(The opposite of `lag()` is `lead()`, which shifts the column down by one row.)
+
+To check the data, I've used `tail()` and `head()` to look a little bit further down the data set.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+    mutate(yesterday_cases = lag(confirmed, 1, default = 0))
+
+ch_covid_data |> tail(-30) |> head(20)
+```
+Now, we can calculate the number of new cases each day by taking the difference between the number of confirmed cases today and the number of confirmed cases yesterday.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(daily_cases = confirmed - yesterday_cases)
+
+ch_covid_data |> tail(-30) |> head(20)
+```
+
+
+Now, let's make a line chart to visualize the number of new cases each day.
+
+```{r warning = FALSE}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = date, y = daily_cases))
+```
+
+## Smoothing out the data
+
+We can see another problem from this: the number of new cases each day is very noisy. Sometimes, new cases are reported in batches, often after a weekend. This is going to make it hard to see any trends in the data.
+
+We can fix this by taking a rolling average of the number of new cases each day. This will smooth out the data and make it easier to see any trends. 
+
+The easiest way to do this is to use the `rollmean()` function from the `zoo` package. You might need to install the package first.
+
+```{r eval=FALSE}
+install.packages("zoo")
+```
+
+In the `rollmean()` function, `k` is the number of days to average over. Here, I've chosen 14 days, meaning that the new value will be the average of the 7 days before and after the analyzed row. This should smooth out the data enough to make it easier to see any trends. 
+
+```{r message=FALSE}
+library(zoo)
+```
+
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(year_day = yday(date)) |> 
+  mutate(daily_cases_smoothed = rollmean(daily_cases, k=14, fill=0)) 
+
+ch_covid_data |> 
+  tail(-30) |> 
+  head(20) |> 
+  select(date, daily_cases, daily_cases_smoothed)
+```
+
+To make sure this works, let's plot the data again.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = date, y = daily_cases), color = "#bbbbbb") +
+  geom_line(aes(x = date, y = daily_cases_smoothed), color = "#225577", linewidth = 1) +
+  theme_minimal()
+```
+
+This looks much better! The smoothed line is much easier to read than the noisy line.
+
+## Creating a ribbon plot
+
+Our next step is to convert this from a line chart to a spiral chart. We'll start by creating a ribbon plot, where the area between two lines is filled in. Using `geom_ribbon()`, we can fill in the area between two lines.
+
+`geom_ribbon()` takes two arguments, `ymin` and `ymax`, which are the lower and upper bounds of the ribbon. Here, we'll set `ymin` to `-daily_cases_smoothed` and `ymax` to `daily_cases_smoothed`. This will create a ribbon plot where the area between `-daily_cases_smoothed` and `daily_cases_smoothed` is filled in.
+
+```{r}
+ch_covid_data |>
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = date,
+      ymin = -daily_cases_smoothed,
+      ymax = daily_cases_smoothed
+    ),
+    fill = "#eeaaaa",
+    color = "#662222"
+  )
+```
+
+## Using polar coordinates
+
+This is the basic structure of the spiral chart. Out next step is to wrap it around a circle.
+
+This can be done with `coord_polar()`, which uses polar coordinates instead of Cartesian coordinates. This will wrap the chart around a circle, creating a spiral chart.
+
+
+```{r}
+ch_covid_data |>
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = date,
+      ymin = -daily_cases_smoothed,
+      ymax = daily_cases_smoothed
+    ),
+    fill = "#eeaaaa",
+    color = "#662222"
+  ) + 
+  coord_polar()
+```
+What's going on here? The chart still has X and Y coordinates, but now they're arranged so that Y=0 is at the center of the circle, and the X axis wraps around the circle. This is similar to how coordinates work around a globe, where the south pole is at 0 degrees north, and the east-west axis wraps around the globe.
+
+## Transforming a circle to a spiral
+
+```{r echo=FALSE}
+spiral_example_data <- tibble(
+  year_day = rep(1:365, 5),
+  year = rep(2020:2024, each=365)
+  ) |> 
+  mutate(year_num = year - 2020) |>
+  mutate(spiral = year_num * 365 + year_day) |> 
+  # convert to date
+  mutate(year_day = as.Date(year_day, origin = "2020-01-01"))
+
+circle_plot <- spiral_example_data |>
+  ggplot() +
+  geom_line(aes(x = year_day, y = year, group=year_num, color = year_day), size = 5) +
+  theme_minimal() +
+  scale_color_gradientn(colors = c("#ff3322", "#cccc33", "#33cccc")) +
+  theme(legend.position = "none") 
+
+spiral_plot <- spiral_example_data |>
+  ggplot() +
+  geom_line(aes(x = year_day, y = spiral, group=year_num, color = year_day), size = 5) +
+  theme_minimal() +
+  scale_color_gradientn(colors = c("#ff3322", "#cccc33", "#33cccc")) +
+  theme(legend.position = "none")
+```
+
+
+Let's think about polar coordinates for a moment. In polar coordinates, the X axis is the angle around the circle, and the Y axis is the distance from the center of the circle. This means that the further out you go, the higher the Y value.
+
+So if we plotted something with, for example, the X axis as the day of the year and the Y axis as the year, we'd get concentric circles, with each year being a circle. We can see this in the two examples, with Cartesian and polar coordinates, below.
+
+::: {layout-ncol=2}
+```{r echo=FALSE}
+circle_plot + 
+  labs(
+    title = "Circle plot: Cartesian coordinates",
+    x = "Day of the year",
+    y = "Year"
+  ) +
+  scale_x_date(date_labels = "%b")
+```
+
+```{r echo=FALSE}
+circle_plot + 
+  coord_polar() + 
+  labs(
+    title = "Circle plot: polar coordinates",
+    x = "Day of the year",
+    y = "Year"
+  )
+```
+:::
+
+Now: this might take some work to wrap your mind around: if we keep the X axis as the day of the year, but change the Y axis to be the number of days since 2020, we get a spiral.This is because the Y axis is now the distance from the center of the circle, and the further out you go, the higher the Y value. When we get to the end of the year, we jump to the next year, and the spiral continues.
+
+::: {layout-ncol=2}
+```{r echo=FALSE}
+spiral_plot +
+  labs(title = "Spiral plot: Cartesian coordinates", x = "Day of the year", y = "Days since 2020") +
+  scale_x_date(date_labels = "%b")
+```
+
+```{r echo=FALSE}
+spiral_plot + coord_polar() +
+  labs(title = "Spiral plot: polar coordinates", x = "Day of the year", y = "Days since 2020") +
+  scale_x_date(date_labels = "%b")
+```
+:::
+
+So to convert our circle plot to a spiral plot, we need to change the Y axis from the year to the number of days since 2020.
+
+We'll first make a new column, `year_num` that is the number of years since 2020. We'll then make a new column, `days_since_2020`, that is the number of days since 2020. This is the number of years since 2020 times 365, plus the day of the year.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(year_num = year(date) - 2020) |> 
+  mutate(days_since_2020 = year_num * 365 + year_day)
+```
+
+Just to make sure everything is working, let's just plot the center line of the spiral.
+
+::: {layout-ncol=2}
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
+```
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num)) +
+  coord_polar()
+```
+:::
+
+If we look closely, we can see a small issue! There's a gap between the end of one year and the start of the next.
+
+This is because 2020 was a leap year: it has 366 days. When we wrap back around, we're missing a day.
+
+We could potentially fix this with a whole bunch of math, but it's much easier to just filter out the leap day. While this isn't data-perfect solution, it's good enough for this sort of visualization.
+
+We have to do this before we calculate the `days_since_2020` column, as we're using the `year_day` column in the calculation.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(year_num = year(date) - 2020) |> 
+  filter(year_day <= 365) |>
+  mutate(days_since_2020 = year_num * 365 + year_day)
+```
+
+We'll also convert the `year_day` column to a date, so that ggplot knows how to label it: seeing the month of the year is much more informative than just a random number. Note that we have to specify a year for the origin, but this is arbitrary; we could have chosen any year.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(year_day = as_date(year_day, origin = "1970-01-01")) 
+```
+
+Now when we plot the center line of the spiral, we can see that the gap is gone. 
+
+::: {layout-ncol=2}
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
+```
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num)) +
+  coord_polar()
+```
+:::
+
+This is why it's good to visualize your data as you go along: it's much easier to spot mistakes when you can see them.
+
+## Making the spiral chart the easy way
+
+A somewhat cheesy way to complete this spiral would then simply be to alter the size of the line based on the number of new cases each day. This will make the spiral look like it's "breathing", with the line getting thicker when there are more cases.
+
+We can alter the relative size of the line using `scale_size_continuous()`.
+This will make the line thicker or thinner based on the value of `daily_cases_smoothed`.
+
+::: {layout-ncol=2}
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num, linewidth = daily_cases_smoothed)) +
+  scale_linewidth_continuous(range = c(0.5, 20))
+```
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num, linewidth = daily_cases_smoothed)) +
+  scale_linewidth_continuous(range = c(0.5, 20)) +
+  coord_polar()
+```
+:::
+
+This would be a valid way to do it! However, it doesn't look quite as nice as the original spiral chart. The original chart has a ribbon plot, where the area between two lines is filled in. This makes it look like a spiral, rather than just a weird leech sitting in the water.
+
+## Making the spiral chart the hard way
+
+So, we need to go back to our ribbon plot we did earlier in class, and think about ways to combine this with the spiral chart. In the ribbon plot, the Y axis is the total amount of daily cases, whereas in the spiral chart, the Y axis is the number of days since 2020.
+
+This method was adapted from [This page on Github](https://bydata.github.io/nyt-corona-spiral-chart/), which was a much cleaner solution than the one I'd implemented independently.
+
+::: {layout-ncol=2}
+
+```{r}
+ch_covid_data |>
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = date,
+      ymin = -daily_cases_smoothed,
+      ymax = daily_cases_smoothed
+    ),
+    fill = "#eeaaaa",
+    color = "#662222"
+  )
+```
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
+```
+
+:::
+
+The number of daily cases is huge compared to the number of days since 2020. We need to rescale the number of daily cases to make it fit on the same scale as the number of days since 2020. We're therefore going to re-scale the number of daily cases to be a smaller, arbitrary number.
+
+First, we'll re-scale the number of daily cases to be between 0 and 1, by dividing by the maximum number of daily cases. This will make the number of daily cases relative to the maximum number of daily cases.
+
+We can use `summary()` to check that the maximum value of `rescaled_daily_cases` is 1.
+
+```{r}
+ch_covid_data <- ch_covid_data |> 
+  mutate(rescaled_daily_cases = daily_cases_smoothed / max(daily_cases_smoothed))
+
+ch_covid_data |> select(rescaled_daily_cases, daily_cases_smoothed) |> summary()
+```
+
+Now, we can actually just add our two Y axes together, and we'll get a spiral chart with a ribbon plot. It's perfectly valid to do a little light calculation inside ggplot itself.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases,
+      ymax = days_since_2020 + rescaled_daily_cases,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
+```
+However, we still don't see anything; the ribbon only goes between 0 and 1, which is too small to see. We need to re-scale the number of daily cases to be a larger number.
+
+This requires a little experimentation, and in this case, you may wish to save our magic number as a variable, so that you can easily change it later. I can then play around with different numbers to see what looks good, and it will be automatically applied to different areas of the chart.
+
+```{r}
+ribbon_multiplier = 300
+
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
+```
+  
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num)) +
+  coord_polar()
+```
+
+## Cleaning up the chart
+
+That's basically it! We've rotated the data in our minds enough to form it into the shape of a spiral, having manipulated the data very far from the two columns we started with. Best of all, because we did this all through code, we could easily change the country, the smoothing, or the styling, and the chart would automatically update. Feel free to delete your code, go back to the beginning, and try it all again with a different country. You should get a different spiral chart, but with the same basic structure.
+
+All that's left to do is make it look a little cleaner and more presentable.
+
+First, we notice that the line starts at the very center of the spiral, which gives us a bit of a strange appearance. We can fix this by changing limits of the Y axis to below 0; this will move the center of the spiral down a little bit.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num)) +
+  coord_polar() +
+  lims(y = c(-300, 1300))
+```
+
+Next, I've changed our base theme to `theme_minimal()` and lightened the center line of the spiral a little bit using `alpha = 0.2`, which controls the transparency of the line.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num), alpha =0.2) +
+  coord_polar() +
+  lims(y = c(-300, 1300)) +
+  theme_minimal()
+```
+
+Third, dividing a year into eighths is a little cursed Because we changed the X axis to a date, we can use `scale_x_date()` to change the breaks to be every two months.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num), alpha =0.2) +
+  coord_polar() +
+  lims(y = c(-300, 1300)) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "2 months", date_labels = "%b")
+```
+Finally, we can remove the Y axis, the Y axis labels, the Y axis ticks, and the Y axis title. This will clean up the chart a little bit, as we don't need the Y axis for a spiral chart. This leaves us with a similar appearance to the original spiral chart.
+
+```{r}
+ch_covid_data |> 
+  ggplot() +
+  geom_ribbon(
+    aes(
+      x = year_day,
+      ymin = days_since_2020 - rescaled_daily_cases * ribbon_multiplier,
+      ymax = days_since_2020 + rescaled_daily_cases * ribbon_multiplier,
+      group = year_num
+    ), fill = "#eeaaaa", color = "#662222") +
+  geom_line(aes(x = year_day, y = days_since_2020, group=year_num), alpha =0.2) +
+  coord_polar() +
+  lims(y = c(-300, 1300)) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "2 months", date_labels = "%b") + 
+  theme(legend.position = "none", 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title = element_blank(),
+        panel.grid.major = element_blank()
+  )
+```
+From here, we'd be just about ready to export the chart and share it with the world. 
+
+Just about as clean as the New York Times!
+
+
+
+
+
+
+

@@ -1,0 +1,93 @@
+# Before we start: Installing software {.unnumbered}
+
+For this course, we'll primarily be using R and RStudio to create our data visualizations. R is a programming language, and RStudio is an application that makes it easier to write and run R code.
+
+You can access R and RStudio in two ways: using the class server, or installing it on your own computer. Here are some instructions for both:
+
+## The easy way: Using the class server
+
+The easiest way to get started is to use the class server. Signing up will allow you to access Rstudio via your web browser, and has everything set up for you. You can find the link to the class server in the course syllabus, on OLAT, and I've also sent you an email.
+
+If you're just starting out, or if you have an older computer, I'd recommend taking this route.
+
+Once you've signed up, you have one more 5-minute assignment, detailed at @sec-keyboard-homework.
+
+## The hard way: Installing on your own computer
+
+Alternatively, you can install R and RStudio on your own computer. This will let you keep all the data, code, and packages you install, and you can continue using R after the class is over. Here's how you can do it:
+
+### Installing R
+
+1.  Download R from <https://cran.rstudio.com/>.
+2.  Follow the instructions for your operating system.
+
+### Installing RStudio
+
+1.  Download RStudio from: <https://posit.co/download/rstudio-desktop/>
+2.  Follow the instructions for your operating system.
+3.  Now open up RStudio, and you should see something like this:
+
+![Congratulations! You've installed RStudio.](images/installation/blank_rstudio.png)
+
+### Testing your installation
+
+Let's make sure you have the right version of R installed. Find the window called "Console" in RStudio. By default, it is in the bottom left of the screen. Type the following into the console, and hit "Enter".
+
+```{r}
+#| eval=FALSE
+R.version.string
+```
+
+If you've done everything correctly, it will be 4.3 or 4.4.
+
+![The output should look something like this.](images/installation/version_string.png)
+
+### Setting up RStudio {#sec-native-pipe}
+
+Before we start, let's fiddle around with some settings. In the menu at the top of the screen, go to the "Tools" \> "Global Options" menu. Then open up the "Code" tab.
+
+Check the box that says "Use native pipe operator".
+
+Don't worry about what this means for now. You'll know all about the pipe operator by the end of this course.
+
+![The option is in the "Code" tab.](images/installation/native_pipe.png)
+
+While not directly covered in this course, also note the "Git" and "Copilot" tabs if you're already familiar with them. These are very useful tools for working with code, and you should definitely check them out.
+
+### Installing the Tidyverse
+
+For this class, we'll be relying heavily on a package called the Tidyverse, short for "Tidy Universe". It is, in my opinion, the one thing that makes R better than any other language for data analysis and visualization.
+
+To install the Tidyverse, type the following into the console:
+
+```{r}
+#| eval=FALSE
+install.packages("tidyverse")
+```
+
+![install.packages("tidyverse") will download the Tidyverse package. This is kind of like installing a new app onto your computer.](images/installation/install_tidyverse.png)
+
+You'll be prompted with an option to type Y or N.
+
+![Type Y for yes, you want to install.](images/installation/install_tidyverse_2.png)
+
+To make sure it installed correctly, type the following into the console:
+
+```{r}
+#| eval=FALSE
+library(tidyverse)
+```
+
+![library(tidyverse) will load the package; this is kind of like opening an app on your computer.](images/installation/install_tidyverse_3.png)
+
+<!-- ## Adding our class data -->
+
+<!-- TODO -->
+
+### Homework: Getting to know your keyboard {#sec-keyboard-homework}
+
+This is a very international class, and we all have slightly different keyboards. Your first assignment is to figure out how to type the following keys:
+
+```         
+& $ | [] {} () \ / ~ ` ^ < > %
+```
