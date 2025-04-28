@@ -1,24 +1,377 @@
-# Aesthetics
+# Aesthetics and Computer Colors
+
+```{r message = FALSE}
+library(tidyverse)
+```
+
+## Classwork: Critiquing some data visualizations
+
+In groups, critique the following data visualizations. For each of them, answer the following questions:
+
+1. What do you like about this data visualization?
+1. What do you dislike?
+1. Was color used effectively in this graphic?
+1. How long did it take for you to figure out what was going on?
+1. Is there another way to visualize this data?
+1. Do you think you would have the skills to make this graphic in R? 
+
+### The climate tornado 
+This is one of many interpretations of the [climate spiral](https://en.wikipedia.org/wiki/Climate_spiral), a popular way of animating climate change.
+
+![https://www.climate-lab-book.ac.uk/spirals/](images/aesthetics/spiral_2020_large.gif)
+
+
+### Minard's flow chart
+
+This chart was an early example of data visualization, showing the loss of troops during Napoleon's march on Moscow.
+
+![https://en.wikipedia.org/wiki/Charles_Joseph_Minard](images/aesthetics/minard.png)
+
+![Here is an English translation via Wikipedia](images/aesthetics/minard_english.png)
+
+<https://en.wikipedia.org/wiki/Charles_Joseph_Minard#/media/File:Redrawing_of_Minard's_Napoleon_map.svg>
+
+### The covid spiral
+
+This is last week's project, now ready for your critique.
+
+![https://www.nytimes.com/2022/01/06/opinion/omicron-covid-us.html](images/ggplot_3/spiral_chart_original.png)
+
+### Joseph Priestly's "A New Chart of History"
+
+This chart is a timeline of history, showing the rise and fall of different civilizations. It was published in 1769.
+
+![https://en.wikipedia.org/wiki/A_New_Chart_of_History](images/aesthetics/new_chart_of_history.jpg)
+
+### An Alternative Data-driven Country Map
+
+An interactive clustering map of the world, showing the countries that are most similar to each other.
+
+It can be found [here](https://projects.interacta.io/country-tsne/), and you should view it in its original form.
+
+![https://projects.interacta.io/country-tsne/](images/aesthetics/new_world_map.png)
+
+### Afghan Stability / Counterinsurgency dynamics
+
+Produced for the US military, this chart shows the interplay between different dynamics in the US-Afghan war
+
+![https://statmodeling.stat.columbia.edu/2009/12/23/how_to_win_in_a/](images/aesthetics/afghan-stability-coin-draft.jpg)
+
+
+### Florence Nightingale's "Diagram of the causes of mortality in the army in the East"
+
+This polar area chart shows the causes of death in the British army during the Crimean War.
+
+![https://en.m.wikipedia.org/wiki/Florence_Nightingale#/media/File%3ANightingale-mortality.jpg](images/aesthetics/nightingale.jpg)
+
+### Countries in the news
+
+![https://pudding.cool/2018/12/countries/](images/aesthetics/pudding.png)
+
+Replicating [Pudding.cool's infographic](https://pudding.cool/2018/12/countries/) about countries in the news was my final project for a data visualization class I took in 2019.
+
+### Heights of various pop stars
+
+This chart shows the heights of some celebrities.
+
+![https://www.reddit.com/r/dataisugly/comments/1hjr01o/height_of_female_popstars/](images/aesthetics/popstars.png)
+
+### Population density of Germany
+
+A 3d plot of the population density of Germany, done using the [rayshader](https://www.rayshader.com/) r package.
+
+![https://x.com/researchremora/status/1604481782128287744](images/aesthetics/germany.jpg)
+
+## A few tips for making better plots
+
+### Label items on the plot
+
+When you make a plot, it’s often better to label the items on the data itself, rather than always putting a legend on the side. This is especially true when you have a lot of data points, and the legend is too small to read. Compare the following:
+
+```{r eval = FALSE}
+#| code-fold: true
+#| code-summary: "Code to download and clean some data"
+
+library(rsdmx)
+
+hours_worked <- readSDMX("https://sdmx.oecd.org/public/rest/data/OECD.ELS.SAE,DSD_HW@DF_AVG_USL_WK_WKD,1.0/AUS+AUT+BEL+CAN+CHL+COL+CRI+CZE+DNK+EST+FIN+FRA+DEU+GRC+HUN+ISL+IRL+ISR+ITA+KOR+LVA+LTU+LUX+MEX+NLD+NZL+NOR+POL+PRT+SVK+SVN+ESP+SWE+CHE+TUR+GBR+USA..._T+F+M._T....ICSE93_1.FT...?startPeriod=1979&dimensionAtObservation=AllDimensions")
+
+hours_worked <- hours_worked |> 
+  as_tibble()
+
+hours_worked <- hours_worked |> 
+  select(TIME_PERIOD, REF_AREA, SEX, obsValue) |> 
+  rename(
+    year = TIME_PERIOD,
+    country = REF_AREA,
+    gender = SEX,
+    hours_worked = obsValue
+  ) |> 
+    mutate(
+    year = as.numeric(year),
+    hours_worked = as.numeric(hours_worked)
+  )
+
+hours_worked |> 
+  write_csv("input_data/hours_worked.csv")
+```
+
+```{r message=FALSE}
+#| code-fold: true
+#| code-summary: "Plotting code: bad plot"
+
+hours_worked <- read_csv("input_data/hours_worked.csv")
+
+hours_worked |> 
+  filter(country %in% c("USA", "MEX", "NZL", "DEU", "SWE")) |> 
+  filter(year == 2010) |> 
+  filter(gender == "_T") |> 
+  mutate(country = case_match(country,
+    "DEU" ~ "Germany",
+    "SWE" ~ "Sweden",
+    "USA" ~ "United States",
+    "MEX" ~ "Mexico",
+    "NZL" ~ "New Zealand"
+  )) |> 
+  ggplot() +
+  geom_col(aes(x = country, y = hours_worked, fill = country)) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank()
+  ) +
+  labs(
+    title = "Average weekly hours worked per person",
+    x = "Country",
+    y = "Hours worked"
+  )
+```
 
 ```{r}
-library(tidyverse)
+#| code-fold: true
+#| code-summary: "Plotting code: slightly better plot"
+
+hours_worked |> 
+  filter(country %in% c("USA", "MEX", "NZL", "DEU", "SWE")) |> 
+  filter(year == 2010) |> 
+  filter(gender == "_T") |> 
+  mutate(country = case_match(country,
+    "DEU" ~ "Germany",
+    "SWE" ~ "Sweden",
+    "USA" ~ "United States",
+    "MEX" ~ "Mexico",
+    "NZL" ~ "New Zealand"
+  )) |> 
+  ggplot() +
+  geom_col(aes(x = country, y = hours_worked, group = country), fill = "#222222") +
+  geom_text(
+    aes(x = country,
+        y = hours_worked,
+        label = hours_worked
+      ),
+      vjust = -0.5, 
+    size = 3
+    ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  labs(
+    title = "Average weekly hours worked per person",
+    x = "Country",
+    y = "Hours worked"
+  )
+```
+
+While the former plot is colorful, it also requires a lot more work to read. Sometimes simpler is better.
+
+### Don't use color if you don't have to.
+
+Often, we'll find ourselves making things colorful just because we can, not worrying about whether it adds anything to the plot. In many cases, you could accomplish the same task better by faceting the plot, adding labels, or using different shapes or line types. Only resort to colors if you have to.
+
+In academia, this is especially pertinent, as academic journals will often charge you extra if you include color figures in your article. If you can make the same plot in black and white, you should.
+
+### Using multiple indicators for a data point with `linetype =` and `shape =`
+
+When you have a lot of data points and have ot use a legend, it’s often useful to use multiple indicators to show the data. For example, you can use color and shape to show two different variables at once. While the color can be helpful to most, having a shape or line type can help the rest.
+
+You can specify this with `linetype =` (for line-based geometries) and `shape =` (for points) in the `aes()` function.
+
+```{r}
+#| code-fold: true
+#| code-summary: "Plotting code: multiple line types"
+
+hours_worked |> 
+  filter(country %in% c("USA", "MEX", "SWE")) |> 
+  filter(gender != "_T") |> 
+  mutate(country = case_match(country,
+    "USA" ~ "United States",
+    "SWE" ~ "Sweden",
+    "MEX" ~ "Mexico",
+  )) |> 
+  mutate(
+    gender = case_match(
+      gender,
+      "M" ~ "Men",
+      "F" ~ "Women"
+    )
+  ) |> 
+  ggplot(aes(x = year, y = hours_worked, color = country)) +
+  geom_line(
+    aes(
+      linetype = country,
+      ), 
+    linewidth = 1
+  ) +
+  facet_wrap(~gender) +
+  labs(
+    title = "Average weekly hours worked per person",
+    x = "Year",
+    y = "Hours worked",
+    color = "Country",
+    linetype = "Country"
+  ) +
+  theme_minimal()
+```
+
+Note that this doesn't really work if you have more than a few categories.
+
+```{r message = FALSE}
+#| code-fold: true
+#| code-summary: "Plotting code: too many line types"
+
+hours_worked |> 
+  filter(country %in% c("USA", "MEX", "SWE", "NZL", "DEU", "GRC")) |> 
+  filter(gender != "_T") |> 
+  mutate(country = case_match(country,
+    "USA" ~ "United States",
+    "NZL" ~ "New Zealand",
+    "SWE" ~ "Sweden",
+    "MEX" ~ "Mexico",
+    "DEU" ~ "Germany",
+    "GRC" ~ "Greece",
+  )) |> 
+  mutate(
+    gender = case_match(
+      gender,
+      "M" ~ "Men",
+      "F" ~ "Women"
+    )
+  ) |> 
+  ggplot(aes(x = year, y = hours_worked, color = country)) +
+  geom_line(
+    aes(
+      linetype = country,
+      ), 
+    linewidth = 1
+  ) +
+  facet_wrap(~gender) +
+  labs(
+    title = "Average weekly hours worked per person",
+    x = "Year",
+    y = "Hours worked",
+    color = "Country",
+    linetype = "Country"
+  ) +
+  theme_minimal()
+```
+GGplot will automatically assign different line types or shapes to each category, but I sure wouldn't want to differentiate between all of them. They each have a code assigned to them, which you can set manually using `scale_shape_manual()`. You can see the codes for each shape by running the following code:
+
+
+```{r echo=FALSE}
+library(ggpubr)
+
+ggpubr::show_line_types()
+```
+
+```{r echo=FALSE}
+ggpubr::show_point_shapes()
+```
+
+```{r}
+hours_worked |> 
+  filter(gender != "_T") |>
+  filter(country == "MEX") |> 
+  ggplot(aes(x = year, y = hours_worked)) +
+  geom_point(aes(shape = gender, color = gender), size = 3) +
+  scale_shape_manual(values = c(1, 4)) +
+  scale_color_manual(values = c("#229922", "#222299")) +
+  theme_minimal()
+```
+
+
+### Use multiple geometries to visualize the data
+
+While the main gist of this section is to keep it simple, there are times when you can use multiple geometries to show the data. For example, you can use a boxplot to show the distribution of the data, and then add points to show the actual data points. This can show the distribution of the data in multiple ways, which can prevent you from accidentally hiding some subtleties in the data.
+
+```{r}
+#| code-fold: true
+#| code-summary: "Plotting code"
+
+library(gghalves)
+library(ggbeeswarm)
+
+hours_worked |> 
+  filter(year %in% c(2000, 2005, 2010, 2015, 2020)) |> 
+  filter(hours_worked != 0) |> 
+  mutate(year = as.factor(year)) |> 
+  filter(gender == "_T") |> 
+  ggplot() +
+  geom_beeswarm(
+    aes(x = year, y = hours_worked),
+    fill = "#222222",
+    side = -1,
+    size = 1.5,
+    ) +
+  geom_half_boxplot(
+    aes(x = year, y = hours_worked),
+    side = "r",
+    alpha = 0.5,
+    outlier.shape = NA,
+    width = 0.5,
+    nudge = 0.05,
+  ) +
+  labs(
+    title = "Average weekly hours worked per person",
+    x = "Year",
+    y = "Hours worked"
+  ) +
+  theme_minimal() 
 ```
 
 ## Classwork: Color blindness and accessibility
 
-1.  Everyone should take out the plots they did for their midterms, and paste one of them into this website: https://pilestone.com/pages/color-blindness-simulator-1
+1.  Everyone should find a data visualization online, save it to a file, and paste it into this website: <https://www.color-blindness.com/coblis-color-blindness-simulator/>
 
-2.  This will show you what your plot looks like to someone with color blindness. Did the colors you chose still work? If not, what could you do to make them more accessible?
+1.  This will show you what your plot looks like to someone with color blindness. Do the colors still work? If not, what could you do to make them more accessible?
 
-## Printability
+### Printability
 
 Especially when you’re making plots for an academic article, you need to make sure that they look good in black and white, because many people still print things off to read them on their B&W office printer, and your plot should still look OK. You can use the color blindness simulator to see how your plot looks in black and white under the monochromacy setting, or actually print it off before publishing.
 
 Be careful with gradients, as they can do weird things in black and white. For example, this chart looks pretty festive and easy to interpret in color, but in black and white, it’s a mess.
 
+![Pretty easy to understand, if a little unconventional](images/aesthetics/rainbowchart.png)
+![An absolute mess.](images/aesthetics/black_and_white_rainbow.png)
+
+## Viridis: an example of a good color palette
+
+```{r message=FALSE}
+library(viridis)
+```
+
+One of the best color palettes available is the Viridis color palettes, a collection of color gradients built into GGplot and Python's matplotlib.
+
+The [introduction page on CRAN](https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html) has a thorough introduction, but it is colorblind and printer friendly, beautiful, and a good default choice.
+
+However, it is **everyone's** default choice, and now that you've seen it, you'll start noticing it everywhere. If you want to stand out a bit, it's best to be able to make your own.
+
 ## Computer colors
 
-But what do these codes mean? Let’s go on a little deep dive into how colors are represented on computers.
+To do this effectively, let’s go on a little deep dive into how colors are represented on computers.
 
 ### Old-school graphics
 
@@ -97,7 +450,7 @@ tibble(
   hue = seq(0,1, length.out = 13),
   color = hsv(hue, 1, 1)
 ) |> 
-  mutate(color_string = color |> as.character() |> str_to_lower()) |> 
+  mutate(color_string = color |> as.character()) |> 
   head(-1) |>
   ggplot(aes(x = hue, y = 1)) +
   geom_tile(aes(fill = color)) +
@@ -118,7 +471,6 @@ Let’s get some practice with color matching. I’ve given you an array of tile
 
 Do as many as you can in 15 minutes.
 
-
 ```{r echo = FALSE}
 ggplot() +
   geom_tile(aes(x = 1, y = 0), fill = "#ff0000") + 
@@ -133,22 +485,21 @@ ggplot() +
   geom_tile(aes(x = 2, y = 1), fill = "#666666") +
   geom_tile(aes(x = 3, y = 1), fill = "#aaaaaa") +
   geom_tile(aes(x = 4, y = 1), fill = "#eeeeee") +
-  geom_tile(aes(x = 5, y = 1), fill = "#ffee66") +
-  geom_tile(aes(x = 6, y = 1), fill = "#ffbb22") +
+  geom_tile(aes(x = 5, y = 1), fill = "#0077ff") +
+  geom_tile(aes(x = 6, y = 1), fill = "#ffbb00") +
   geom_tile(aes(x = 7, y = 1), fill = "#ee5500") +
-  geom_tile(aes(x = 8, y = 1), fill = "#663311") +
+  geom_tile(aes(x = 8, y = 1), fill = "#550055") +
   geom_tile(aes(x = 1, y = 2), fill = "#000033") +
   geom_tile(aes(x = 2, y = 2), fill = "#2244aa") +
   geom_tile(aes(x = 3, y = 2), fill = "#6699ff") +
   geom_tile(aes(x = 4, y = 2), fill = "#ccffff") +
   geom_tile(aes(x = 5, y = 2), fill = "#ffccee") +
-  geom_tile(aes(x = 6, y = 2), fill = "#440044") +
+  geom_tile(aes(x = 6, y = 2), fill = "#663311") +
   geom_tile(aes(x = 7, y = 2), fill = "#bada55") +
   geom_tile(aes(x = 8, y = 2), fill = "#666600") +
   theme_void() +
   lims(y=c(2.5, -0.5))
 ```
-
 
 ```{r}
 ggplot() +
@@ -179,6 +530,8 @@ ggplot() +
   theme_void() +
   lims(y=c(2.5, -0.5))
 ```
+
+There you go! This is a skill you have for the rest of your life.
 
 ## Homework
 
@@ -270,9 +623,8 @@ tibble(
   scale_fill_gradientn(colors = c(
     "#222255",
     "#227788",
-    "#88bbff")
-  ) # Change this!
+    "#88bbff") # Change these! Add as many colors to the middle as you like.
+  ) 
 ```
 
-Please email me the code you used to make your plots in a document named week_8_homework_(your_name).R by next Tuesday.
-
+Please email me the code you used to make your plots in a document named week_8_homework\_(your_name).R by Tuesday, April 29th.

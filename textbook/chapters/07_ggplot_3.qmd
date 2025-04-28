@@ -6,9 +6,9 @@ This week, we're going to be working on one larger project; re-creating and impr
 
 There were several criticisms of the chart.
 
-1. The x axis is [longer for each year;](https://www.practicalreporting.com/blog/2022/1/11/why-the-nyt-spiral-graph-is-a-failure-and-a-success) the length of the line for 2020 is shorter than the one for 2021, making it hard to compare infection rates over time
+1.  The x axis is [longer for each year;](https://www.practicalreporting.com/blog/2022/1/11/why-the-nyt-spiral-graph-is-a-failure-and-a-success) the length of the line for 2020 is shorter than the one for 2021, making it hard to compare infection rates over time
 
-1. The spiral is [off-center](https://eagereyes.org/blog/2022/the-ny-times-covid-spiral-is-off-center) and isn't centered on the page, making the whole thing seem a bit janky.
+2.  The spiral is [off-center](https://eagereyes.org/blog/2022/the-ny-times-covid-spiral-is-off-center) and isn't centered on the page, making the whole thing seem a bit janky.
 
 While there have been [several](https://x.com/Wattenberger/status/1479276091751768065) [remixes](https://x.com/soustha/status/1479588387556249609) of the original, we'll today focus on recreating a version of the spiral chart.
 
@@ -45,9 +45,11 @@ ch_covid_data <- covid_data |>
 ch_covid_data
 ```
 
+### Classwork: Plot No. 1
+
 Just to check that we have the data we need, let's plot the number of confirmed cases over time.
 
-```{r warning=FALSE}
+```{r warning=FALSE, echo=FALSE}
 ch_covid_data |> 
   ggplot(aes(x = date, y = confirmed)) +
   geom_line()
@@ -79,6 +81,7 @@ However, there are still some missing values at the beginning of the data set, b
 ```{r}
 ch_covid_data |> head(20)
 ```
+
 We can simply replace these missing values with 0, using `replace_na()`.
 
 ```{r}
@@ -90,11 +93,14 @@ ch_covid_data |> head(20)
 
 Let's plot the data again to confirm that we didn't mess anything up.
 
-```{r}
+### Classwork: Plot No. 2
+
+```{r echo=FALSE, warning=FALSE}
 ch_covid_data |> 
   ggplot() +
   geom_line(aes(x = date, y = confirmed))
 ```
+
 Yep! This looks about the same as the last one, but now we have no missing values.
 
 ## Calculating new daily cases
@@ -104,7 +110,6 @@ However, this data set has a slight problem: it represents the total number of c
 To get yesterday's number of confirmed cases, we can use the `lag()` function. This function shifts the column up by one row, so that the value in the first row is now in the second row, the value in the second row is now in the third row, and so on.
 
 We'll be left with 1 `NA` value in the first row, as there is no value before the first row. We can replace this with 0 using the `default` argument.
-
 
 (The opposite of `lag()` is `lead()`, which shifts the column down by one row.)
 
@@ -116,6 +121,7 @@ ch_covid_data <- ch_covid_data |>
 
 ch_covid_data |> tail(-30) |> head(20)
 ```
+
 Now, we can calculate the number of new cases each day by taking the difference between the number of confirmed cases today and the number of confirmed cases yesterday.
 
 ```{r}
@@ -125,10 +131,11 @@ ch_covid_data <- ch_covid_data |>
 ch_covid_data |> tail(-30) |> head(20)
 ```
 
-
 Now, let's make a line chart to visualize the number of new cases each day.
 
-```{r warning = FALSE}
+### Classwork: Plot No. 3
+
+```{r warning = FALSE, echo=FALSE}
 ch_covid_data |> 
   ggplot() +
   geom_line(aes(x = date, y = daily_cases))
@@ -138,7 +145,7 @@ ch_covid_data |>
 
 We can see another problem from this: the number of new cases each day is very noisy. Sometimes, new cases are reported in batches, often after a weekend. This is going to make it hard to see any trends in the data.
 
-We can fix this by taking a rolling average of the number of new cases each day. This will smooth out the data and make it easier to see any trends. 
+We can fix this by taking a rolling average of the number of new cases each day. This will smooth out the data and make it easier to see any trends.
 
 The easiest way to do this is to use the `rollmean()` function from the `zoo` package. You might need to install the package first.
 
@@ -146,12 +153,11 @@ The easiest way to do this is to use the `rollmean()` function from the `zoo` pa
 install.packages("zoo")
 ```
 
-In the `rollmean()` function, `k` is the number of days to average over. Here, I've chosen 14 days, meaning that the new value will be the average of the 7 days before and after the analyzed row. This should smooth out the data enough to make it easier to see any trends. 
+In the `rollmean()` function, `k` is the number of days to average over. Here, I've chosen 14 days, meaning that the new value will be the average of the 7 days before and after the analyzed row. This should smooth out the data enough to make it easier to see any trends.
 
 ```{r message=FALSE}
 library(zoo)
 ```
-
 
 ```{r}
 ch_covid_data <- ch_covid_data |> 
@@ -166,7 +172,9 @@ ch_covid_data |>
 
 To make sure this works, let's plot the data again.
 
-```{r}
+### Classwork: Plot No. 4
+
+```{r, echo=FALSE}
 ch_covid_data |> 
   ggplot() +
   geom_line(aes(x = date, y = daily_cases), color = "#bbbbbb") +
@@ -180,7 +188,9 @@ This looks much better! The smoothed line is much easier to read than the noisy 
 
 Our next step is to convert this from a line chart to a spiral chart. We'll start by creating a ribbon plot, where the area between two lines is filled in. Using `geom_ribbon()`, we can fill in the area between two lines.
 
-`geom_ribbon()` takes two arguments, `ymin` and `ymax`, which are the lower and upper bounds of the ribbon. Here, we'll set `ymin` to `-daily_cases_smoothed` and `ymax` to `daily_cases_smoothed`. This will create a ribbon plot where the area between `-daily_cases_smoothed` and `daily_cases_smoothed` is filled in.
+`geom_ribbon()` takes two arguments, `ymin` and `ymax`, which are the lower and upper bounds of the ribbon.
+
+Here, we'll set `ymin` to `-daily_cases_smoothed` and `ymax` to `daily_cases_smoothed`. This will create a ribbon plot where the area between `-daily_cases_smoothed` and `daily_cases_smoothed` is filled in.
 
 ```{r}
 ch_covid_data |>
@@ -202,7 +212,6 @@ This is the basic structure of the spiral chart. Out next step is to wrap it aro
 
 This can be done with `coord_polar()`, which uses polar coordinates instead of Cartesian coordinates. This will wrap the chart around a circle, creating a spiral chart.
 
-
 ```{r}
 ch_covid_data |>
   ggplot() +
@@ -217,6 +226,7 @@ ch_covid_data |>
   ) + 
   coord_polar()
 ```
+
 What's going on here? The chart still has X and Y coordinates, but now they're arranged so that Y=0 is at the center of the circle, and the X axis wraps around the circle. This is similar to how coordinates work around a globe, where the south pole is at 0 degrees north, and the east-west axis wraps around the globe.
 
 ## Transforming a circle to a spiral
@@ -246,12 +256,11 @@ spiral_plot <- spiral_example_data |>
   theme(legend.position = "none")
 ```
 
-
 Let's think about polar coordinates for a moment. In polar coordinates, the X axis is the angle around the circle, and the Y axis is the distance from the center of the circle. This means that the further out you go, the higher the Y value.
 
 So if we plotted something with, for example, the X axis as the day of the year and the Y axis as the year, we'd get concentric circles, with each year being a circle. We can see this in the two examples, with Cartesian and polar coordinates, below.
 
-::: {layout-ncol=2}
+::: {layout-ncol="2"}
 ```{r echo=FALSE}
 circle_plot + 
   labs(
@@ -275,7 +284,7 @@ circle_plot +
 
 Now: this might take some work to wrap your mind around: if we keep the X axis as the day of the year, but change the Y axis to be the number of days since 2020, we get a spiral.This is because the Y axis is now the distance from the center of the circle, and the further out you go, the higher the Y value. When we get to the end of the year, we jump to the next year, and the spiral continues.
 
-::: {layout-ncol=2}
+::: {layout-ncol="2"}
 ```{r echo=FALSE}
 spiral_plot +
   labs(title = "Spiral plot: Cartesian coordinates", x = "Day of the year", y = "Days since 2020") +
@@ -301,7 +310,7 @@ ch_covid_data <- ch_covid_data |>
 
 Just to make sure everything is working, let's just plot the center line of the spiral.
 
-::: {layout-ncol=2}
+::: {layout-ncol="2"}
 ```{r}
 ch_covid_data |> 
   ggplot() +
@@ -338,9 +347,9 @@ ch_covid_data <- ch_covid_data |>
   mutate(year_day = as_date(year_day, origin = "1970-01-01")) 
 ```
 
-Now when we plot the center line of the spiral, we can see that the gap is gone. 
+Now when we plot the center line of the spiral, we can see that the gap is gone.
 
-::: {layout-ncol=2}
+::: {layout-ncol="2"}
 ```{r}
 ch_covid_data |> 
   ggplot() +
@@ -361,11 +370,9 @@ This is why it's good to visualize your data as you go along: it's much easier t
 
 A somewhat cheesy way to complete this spiral would then simply be to alter the size of the line based on the number of new cases each day. This will make the spiral look like it's "breathing", with the line getting thicker when there are more cases.
 
-We can alter the relative size of the line using `scale_size_continuous()`.
-This will make the line thicker or thinner based on the value of `daily_cases_smoothed`.
+We can alter the relative size of the line using `scale_size_continuous()`. This will make the line thicker or thinner based on the value of `daily_cases_smoothed`.
 
-::: {layout-ncol=2}
-
+::: {layout-ncol="2"}
 ```{r}
 ch_covid_data |> 
   ggplot() +
@@ -388,10 +395,9 @@ This would be a valid way to do it! However, it doesn't look quite as nice as th
 
 So, we need to go back to our ribbon plot we did earlier in class, and think about ways to combine this with the spiral chart. In the ribbon plot, the Y axis is the total amount of daily cases, whereas in the spiral chart, the Y axis is the number of days since 2020.
 
-This method was adapted from [This page on Github](https://bydata.github.io/nyt-corona-spiral-chart/), which was a much cleaner solution than the one I'd implemented independently.
+This method was adapted from [This page on Github](https://bydata.github.io/nyt-corona-spiral-chart/), which was a much cleaner solution than the one I'd implemented on my own.
 
-::: {layout-ncol=2}
-
+::: {layout-ncol="2"}
 ```{r}
 ch_covid_data |>
   ggplot() +
@@ -405,12 +411,12 @@ ch_covid_data |>
     color = "#662222"
   )
 ```
+
 ```{r}
 ch_covid_data |> 
   ggplot() +
   geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
 ```
-
 :::
 
 The number of daily cases is huge compared to the number of days since 2020. We need to rescale the number of daily cases to make it fit on the same scale as the number of days since 2020. We're therefore going to re-scale the number of daily cases to be a smaller, arbitrary number.
@@ -440,6 +446,7 @@ ch_covid_data |>
     ), fill = "#eeaaaa", color = "#662222") +
   geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
 ```
+
 However, we still don't see anything; the ribbon only goes between 0 and 1, which is too small to see. We need to re-scale the number of daily cases to be a larger number.
 
 This requires a little experimentation, and in this case, you may wish to save our magic number as a variable, so that you can easily change it later. I can then play around with different numbers to see what looks good, and it will be automatically applied to different areas of the chart.
@@ -458,7 +465,7 @@ ch_covid_data |>
     ), fill = "#eeaaaa", color = "#662222") +
   geom_line(aes(x = year_day, y = days_since_2020, group=year_num))
 ```
-  
+
 ```{r}
 ch_covid_data |> 
   ggplot() +
@@ -532,6 +539,7 @@ ch_covid_data |>
   theme_minimal() +
   scale_x_date(date_breaks = "2 months", date_labels = "%b")
 ```
+
 Finally, we can remove the Y axis, the Y axis labels, the Y axis ticks, and the Y axis title. This will clean up the chart a little bit, as we don't need the Y axis for a spiral chart. This leaves us with a similar appearance to the original spiral chart.
 
 ```{r}
@@ -556,13 +564,7 @@ ch_covid_data |>
         panel.grid.major = element_blank()
   )
 ```
-From here, we'd be just about ready to export the chart and share it with the world. 
+
+From here, we'd be just about ready to export the chart and share it with the world.
 
 Just about as clean as the New York Times!
-
-
-
-
-
-
-

@@ -1,12 +1,14 @@
 # Maps & geospatial data
 
-```{r}
+```{r message = FALSE}
 library(tidyverse)
 library(sf)
 library(ggspatial)
-library(rnaturalearth)
-library(wbstats)
-library(maps)
+library(scales)
+
+# library(rnaturalearth)
+# library(wbstats)
+# library(maps)
 ```
 
 Geodata can be a real pain to deal with, but if you just want some basic country data, you can use the rnaturalearth package.
@@ -18,7 +20,7 @@ library(rnaturalearth)
 africa <- ne_countries(scale = 10, continent = "africa")
 ```
 
-The `sf` (Simple Features) package includes a lot of functions to make maps, one of which is the `geom_sf()` function, which allows you to plot geographic data as a simple map.
+The `sf` (Simple Features) package includes a lot of functions to make maps, one of which is the `geom_sf()` function, which allows you to plot geographic data as a simple map. `geom_sf()` is a ggplot2 geom, so you can use it just like any other ggplot2 geom, but doesn't require setting any aesthetic mappings if you don't need to.
 
 ```{r}
 africa |>
@@ -55,6 +57,12 @@ africa |>
   lims(x = c(-20, 30), y = c(0, 40))
 ```
 
+## Classwork: Crop a map
+
+1.  Choose a country in Africa.
+
+2.  Manually crop the map to that country and its neighbors.
+
 My African geography could use some work, so I’ll also add some labels to the map.
 
 We do this by adding a `geom_sf_label()` layer to the plot, as well as a `label=` aesthetic to the `aes()` call.
@@ -69,16 +77,7 @@ africa |>
 
 This is, however, a little crowded, so we can first make a new column to only include the most populous countries, those over 30 million (3e7) inhabitants.
 
-We here use `case_when()` to create a new column, `label_name`, which is the name of the country if the population is over 30 million, and `NA` otherwise.
-
-```{r}
-africa |> mutate(
-  label_name = case_when(
-    pop_est > 3e7 ~ name, # if pop_est > 3e7, make it the same as the name column 
-    .default = NA  # If none of the conditions are true, use this one
-  )
-)
-```
+We here use `case_when()` to create a new column, `label_name`, which is the name of the country if the population is over 30 million, and `NA` otherwise. Note that this is different from `case_match()`, which we learned earlier.
 
 ```{r}
 africa <- africa |> mutate(
@@ -86,8 +85,14 @@ africa <- africa |> mutate(
     pop_est > 3e7 ~ name,
     .default = NA
   )
-) 
+)
 
+africa |> 
+  as_tibble() |>
+  select(name, pop_est, label_name) 
+```
+
+```{r}
 africa |> 
   ggplot(aes(fill = pop_est, label = label_name)) +
   geom_sf() +
@@ -95,58 +100,64 @@ africa |>
   geom_sf_label()
 ```
 
-With a little messing around, we can get a decent looking map. Remember that for scale and stuff, you should look at the final output, not the little map preview in RStudio.
-
-TODO: Explain
-
-```{r}
-options(scipen = 999)
-```
+With a little messing around, we can get a decent looking map. Remember that for scale and overlapping data, you should look at the final output, not the little map preview in RStudio.
 
 ```{r}
 africa |>
   ggplot(aes(fill = pop_est, label = label_name)) +
   geom_sf() +
   coord_sf(xlim = c(-15, 50), ylim = c(-35, 40)) +
-  geom_sf_label(fill = "#eeeeee") +
-  theme_minimal() +
+  geom_sf_text(
+    color = "#222222",
+    family = "iosevka") +
+  theme_minimal(base_family = "iosevka") +
   theme(
-    legend.position = "bottom",
-    legend.key.width = unit(3, "cm")
+    legend.position = c(0.2,.25),
+    axis.title = element_blank(),
   ) +
-  labs(fill="Population") |> 
-  scale_fill_viridis_c(option = "A")
+  labs(fill="Population") + 
+  scale_fill_gradientn(colors = c("#888888", "#eeeeee"), labels = label_comma())
 ```
 
 This will save the final output. Be sure to look here when you’re making your maps.
 
 ```{r}
 #| eval=FALSE
-ggsave("afrimap.png", width = 20, height = 25, unit="cm", dpi=300)
+ggsave("images/maps/afrimap.png", width = 20, height = 25, unit="cm", dpi=300)
 ```
 
-![](images/maps/afrimap.png)
+![The final map is what you want to focus on.](images/maps/afrimap.png)
 
 ## Classwork: Make a map
+
+In addition to countries, the rnaturalearth package also has data on states, cantons and provinces using the `ne_states()` function. Pick a country, and make a map of it's first-level subdivisions.
+
+use `ggsave()` to save the final output, and make sure it looks good.
 
 ```{r}
 myanmar <- ne_states(country = "Myanmar", returnclass = "sf")
 ```
 
-TODO: Include final output
-
 ## Getting country data the more complicated way
 
-The more complicated way to get geodata is to download it from a website like naturalearthdata.com, and then load it into R.
+The more complicated way to get geodata is to download it from a website like [naturalearthdata.com](https://www.naturalearthdata.com/downloads/), and then load it into R.
 
-This is a bit more complicated, but it gives you a bit more data than the R version.
+This is a bit more complicated, but it gives you a bit more data than the R version. You'll first want to download the data from the website, and then unzip it. Fortunately, R has functions to do this, no WinRAR required.
 
-TODO: explain shapefile folder
+```{r eval=FALSE}
+download.file(
+  "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip",
+  "input_data/ne_countries.zip"
+  )
 
-```{r}
-download.file("https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip", "input_data/ne_countries.zip")
 unzip("input_data/ne_countries.zip", exdir = "input_data/ne_countries")
+```
 
+![The data will be spread across several files](images/maps/shapefile.png)
+
+The data will be spread across several files, but the one we’re interested in is the .shp file. This is the shapefile, which contains the actual geographic data. Remember that you need all of them in the folder for this to work, so don't delete the others.
+
+```{r message = FALSE}
 world_from_file <- st_read("input_data/ne_countries/ne_10m_admin_0_countries.shp")
 ```
 
@@ -167,9 +178,118 @@ This can be a real headache, and if you’re from a sensitive country, you might
 
 If you want to open this can of worms, naturalearthdata.com has geodata from each country’s point of view.
 
-![](images/maps/country_pov.png)
+![You can download country data from a number of different viewpoints.](images/maps/country_pov.png)
 
 You might have to do some wrangling with some other data, as well. For example, the World Bank and IMF don’t publish data on Taiwan, the UN lists it as either “Taiwan, Province of China” or “Other Asian Area”.
+
+## Adding data to maps
+
+One thing that will trip you up is that every country has a lot of names. I might say I’m from:
+
+1.  The US
+2.  The United States
+3.  The United States of America
+4.  America
+5.  The States
+6.  The US of A
+7.  The USA
+8.  USA
+9.  Etc. etc. etc.
+
+Naturalearthdata has a lot of different names for each country, and you’ll have to pick the right one to match to your other data.
+
+```{r}
+world_from_file
+
+world_from_file |> 
+  as_tibble() |> 
+  select(NAME, FIPS_10, ISO_A2, ISO_A3, WB_A2, WB_A3)
+```
+
+We can search with World Bank database from right in R. You simply enter a search term, and it will give you back a list of file codes.
+
+```{r}
+library(wbstats)
+wb_search("electricity")
+```
+
+```{r}
+electricity_access <- wb_data("1.1_ACCESS.ELECTRICITY.TOT")
+electricity_access
+
+electricity_access <- electricity_access |> 
+  filter(date == 2010) |> 
+  select(iso3c, `1.1_ACCESS.ELECTRICITY.TOT`) |> 
+  rename(electrification = `1.1_ACCESS.ELECTRICITY.TOT`)
+```
+
+```{r}
+world_from_file <- world_from_file |>
+  left_join(electricity_access, by = c("ISO_A3" = "iso3c"))
+```
+
+```{r}
+world_from_file |>
+  ggplot(aes(fill=electrification)) +
+  geom_sf() +
+  coord_sf(crs = "+proj=robin") +
+  theme_minimal() +
+  labs(fill = "Electrification") +
+  scale_fill_gradientn(
+    colors = c("#222222", "#999999"),
+    labels = label_percent(scale=1)
+  )
+```
+
+## Layering data onto maps
+
+So far, we’ve basically just been using maps as a coloring book, but we often want to add more layers to our map. We can mix and match other things with our geom_sf() layers, just like any other kind of plot.
+
+Let’s make a map of some cities with greater populations than Switzerland.
+
+Here's a list of cities from the [GeoNames database](https://www.geonames.org/), which is a great resource for geodata. However, when we download it, it's just more tabular data, and we need to convert it to a format that can be plotted on a map.
+
+```{r eval=FALSE}
+download.file("https://download.geonames.org/export/dump/cities15000.zip", "input_data/cities.zip")
+unzip("input_data/cities.zip", exdir = "input_data/cities")
+```
+
+```{r warning = FALSE, message=FALSE}
+cities <- read_delim("input_data/cities/cities15000.txt", delim = "\t", col_names = FALSE)
+cities <- cities |> 
+  select(2, 5, 6, 15) |> 
+  rename(name = X2, lat = X5, long = X6, pop = X15)
+
+cities |> glimpse()
+```
+
+library(maps) world.cities \|\> head()
+
+We can filter the only the cities with populations of greater than 9 million.
+
+big_cities \<- world.cities \|\> filter(pop \> 9000000)
+
+big_cities \|\> head()
+
+Now, to add these to our map, we need to convert it to something that works on a map. These have the latitude and longitude points, but we need them to be an sf object to be drawn correctly.
+
+We can do this with the st_as_sf() function, which makes a map layer from points columns. We can see that we have a long and a lat column, so we can add these as coordinates.
+
+We also need to set our coordinate reference system (crs), which in this case is the default Mercator projection, (4326). It will almost always be this if you see longitude and latitude as degrees.
+
+lims(y=c(0, -10))
+
+big_cities_sf \<- st_as_sf(big_cities, coords=c("long", "lat"), crs=4326) big_cities_sf
+
+ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, color="red") + theme_void()
+
+These can take aesthetics just like anything else. Here, I set the size of the dot depending on the size of the city.
+
+ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, aes(size = pop), color="red") + theme_void()
+
+library(ggrepel)
+
+ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, aes(size = pop), color="red") + geom_label_repel( data = big_cities_sf, \# The data we want aes(label = name, geometry = geometry), \# set the geometry as the 'geometry' column. This is a very new feature! stat = "sf_coordinates" \# Turn it into a sf object ) + coord_sf(crs = "+proj=wag5") + theme_void()
 
 ## Map projections
 
@@ -207,8 +327,6 @@ world |>
 
 You can get really fancy with this if you want to. Here’s the world centered on Switzerland.
 
-A good tool for this is [projectionwizard.org](https://projectionwizard.org), which allows you to play around with different projections in your browser.
-
 ```{r}
 world |>
   ggplot() +
@@ -217,96 +335,4 @@ world |>
   theme_minimal()
 ```
 
-## Adding data to maps
-
-One thing that will trip you up is that every country has a lot of names. I might say I’m from:
-
-1.  The US
-2.  The United States
-3.  The United States of America
-4.  America
-5.  The States
-6.  The US of A
-7.  The USA
-8.  USA
-9.  Etc. etc. etc.
-
-Naturalearthdata has a lot of different names for each country, and you’ll have to pick the right one to match to your other data.
-
-```{r}
-world |> 
-  as_tibble() |> 
-  select(name, name_long, formal_en, name_ciawf, fips_10, iso_a2, iso_a3, wb_a2, wb_a3)
-```
-
-If you’re working with local data, you might want to download the full data \*set from naturalearthdata.com, which has a lot more fields.
-
-```{r}
-world_from_file |> 
-  as_tibble() |> 
-  select(NAME_ZHT, NAME_RU, NAME_JA, NAME_PL, NAME_AR)
-```
-
-We can search with World Bank database from right in R. You simply enter a search term, and it will give you back a list of file codes.
-
-```{r}
-library(wbstats)
-
-wb_search("electricity")
-```
-
-```{r}
-electricity_access <- wb_data("1.1_ACCESS.ELECTRICITY.TOT")
-electricity_access
-```
-
-```{r}
-world |> 
-  left_join(electricity_access, by = c("iso_a3" = "iso3c"))
-```
-
-```{r}
-world |> 
-  left_join(electricity_access, by = c("iso_a3" = "iso3c")) |> 
-  rename(electrification = `1.1_ACCESS.ELECTRICITY.TOT`) |> 
-  ggplot(aes(fill=electrification)) +
-  geom_sf() +
-  coord_sf(crs = "+proj=robin") +
-  theme_minimal()
-```
-
-## Layering data onto maps
-
-TODO: Re-do this without maps trash
-
-So far, we’ve basically just been using maps as a coloring book, but we often want to add more layers to our map. We can mix and match other things with our geom_sf() layers, just like any other kind of plot.
-
-Let’s make a map of some cities with greater populations than Switzerland. The maps library will give you a list of cities. This isn’t the most accurate, but I’m trying to avoid some download.file() nonsense here.
-
-library(maps) world.cities \|\> head()
-
-We can filter the only the cities with populations of greater than 9 million.
-
-big_cities \<- world.cities \|\> filter(pop \> 9000000)
-
-big_cities \|\> head()
-
-Now, to add these to our map, we need to convert it to something that works on a map. These have the latitude and longitude points, but we need them to be an sf object to be drawn correctly.
-
-We can do this with the st_as_sf() function, which makes a map layer from points columns. We can see that we have a long and a lat column, so we can add these as coordinates.
-
-We also need to set our coordinate reference system (crs), which in this case is the default Mercator projection, (4326). It will almost always be this if you see longitude and latitude as degrees.
-
-lims(y=c(0, -10))
-
-big_cities_sf \<- st_as_sf(big_cities, coords=c("long", "lat"), crs=4326) big_cities_sf
-
-ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, color="red") + theme_void()
-
-These can take aesthetics just like anything else. Here, I set the size of the dot depending on the size of the city.
-
-ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, aes(size = pop), color="red") + theme_void()
-
-library(ggrepel)
-
-ggplot() + geom_sf(data = world) + geom_sf(data=big_cities_sf, aes(size = pop), color="red") + geom_label_repel( data = big_cities_sf, \# The data we want aes(label = name, geometry = geometry), \# set the geometry as the 'geometry' column. This is a very new feature! stat = "sf_coordinates" \# Turn it into a sf object ) + coord_sf(crs = "+proj=wag5") + theme_void()
+A good tool for this is [projectionwizard.org](https://projectionwizard.org), which allows you to play around with different projections in your browser. When you find one you like, you can copy the proj4 string and use it in your code.

@@ -38,4 +38,3 @@ library(maps)
 ```
 
 If you're still having trouble, please consider switching to the class server for the next class. Especially on Macs, the `sf` package can be a bit problematic, and for some, requires the use of [homebrew](https://formulae.brew.sh/formula/sf), which should only be used if you know what you're doing.
-

@@ -7,18 +7,18 @@ book:
   date: "2/4/2025"
   chapters:
     - index.qmd
-    - chapters/installation.qmd
-    - chapters/01_tidyverse_1.qmd
-    - chapters/02_tidyverse_2.qmd
-    - chapters/03_tidyverse_3.qmd
-    - chapters/04_datasets.qmd
-    - chapters/05_ggplot_1.qmd
-    - chapters/06_ggplot_2.qmd
-    - chapters/07_ggplot_3.qmd
-    - chapters/08_aesthetics.qmd
-    - chapters/midterm_presentation.qmd
-    - chapters/before_geospatial.qmd
-    # - chapters/09_geospatial.qmd
+    # - chapters/installation.qmd
+    # - chapters/01_tidyverse_1.qmd
+    # - chapters/02_tidyverse_2.qmd
+    # - chapters/03_tidyverse_3.qmd
+    # - chapters/04_datasets.qmd
+    # - chapters/05_ggplot_1.qmd
+    # - chapters/06_ggplot_2.qmd
+    # - chapters/07_ggplot_3.qmd
+    # - chapters/08_aesthetics.qmd
+    # - chapters/midterm_presentation.qmd
+    # - chapters/before_geospatial.qmd
+    - chapters/09_geospatial_v2.qmd
     # - chapters/10_interactivity.qmd
     # - chapters/11_learning_to_learn.qmd
     # - chapters/12_tables_and_stats.qmd
